@@ -21,21 +21,33 @@ from backend.modules.ransomware_module import ransomware_bp
 
 app = Flask(__name__, template_folder='frontend/templates', static_folder='frontend/static')
 
-# ── Database Setup ───────────────────────────────────────────
+# ── Database Setup ────────────────────────────────────────────
 # Priority 1: DATABASE_URL env var (Railway PostgreSQL, Render, etc.)
-# Priority 2: Local SQLite fallback for development
+# Priority 2: SQLite — try /app/database first, then /tmp as writable fallback
 DATABASE_URL = os.getenv("DATABASE_URL", "")
 if DATABASE_URL:
     # Railway/Heroku may use "postgres://" prefix — SQLAlchemy requires "postgresql://"
     if DATABASE_URL.startswith("postgres://"):
         DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
     app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
-    print(f"[DB] Using PostgreSQL (DATABASE_URL configured)")
+    print("[DB] Using PostgreSQL (DATABASE_URL configured)")
 else:
-    # Local development: SQLite relative to project root
+    # Try preferred path; fall back to /tmp if the directory isn't writable
     BASE_DIR = Path(__file__).resolve().parent
-    db_path = BASE_DIR / 'database' / 'apt_intel.db'
-    db_path.parent.mkdir(parents=True, exist_ok=True)
+    preferred_dir = BASE_DIR / 'database'
+    try:
+        preferred_dir.mkdir(parents=True, exist_ok=True)
+        # Verify it is actually writable (Railway may mount /app read-only)
+        test_file = preferred_dir / '.write_test'
+        test_file.touch()
+        test_file.unlink()
+        db_dir = preferred_dir
+    except (OSError, PermissionError):
+        # Fall back to /tmp — always writable in any Linux container
+        db_dir = Path('/tmp/sechub_db')
+        db_dir.mkdir(parents=True, exist_ok=True)
+        print("[DB] /app/database not writable — using /tmp/sechub_db instead")
+    db_path = db_dir / 'apt_intel.db'
     app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
     print(f"[DB] Using SQLite at {db_path}")
 

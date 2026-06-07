@@ -132,30 +132,60 @@ def discover_new_links(app):
         print(f"[{datetime.now()}] Discovery Engine Pulse Complete.")
 
 def start_scheduler(app):
+    from datetime import datetime, timedelta
     scheduler = BackgroundScheduler()
-    # Link health check every 6 hours (not on startup — use manual "Scan All" button)
-    scheduler.add_job(func=check_link_status, trigger="interval", seconds=21600, args=[app])
-    # Discovery engine every 24 hours
-    scheduler.add_job(func=discover_new_links, trigger="interval", seconds=86400, args=[app])
-    
-    # ─── NEW: Ransomware.live jobs ────────────────────────────────────────────
+
+    def safe_check_link_status():
+        try:
+            check_link_status(app)
+        except Exception as e:
+            print(f"[Scheduler] check_link_status error (skipping): {e}")
+
+    def safe_discover_new_links():
+        try:
+            discover_new_links(app)
+        except Exception as e:
+            print(f"[Scheduler] discover_new_links error (skipping): {e}")
+
     def ransomware_victim_job():
-        """Runs inside app context — fetches and stores latest victims."""
-        with app.app_context():
-            from backend.modules.ransomware_module import ingest_victims
-            ingest_victims(limit=100)
+        try:
+            with app.app_context():
+                from backend.modules.ransomware_module import ingest_victims
+                ingest_victims(limit=100)
+        except Exception as e:
+            print(f"[Scheduler] ransomware_victim_job error (skipping): {e}")
 
     def ransomware_groups_job():
-        """Runs inside app context — fetches and upserts all group metadata."""
-        with app.app_context():
-            from backend.modules.ransomware_module import ingest_groups
-            ingest_groups()
+        try:
+            with app.app_context():
+                from backend.modules.ransomware_module import ingest_groups
+                ingest_groups()
+        except Exception as e:
+            print(f"[Scheduler] ransomware_groups_job error (skipping): {e}")
 
-    # Victims: every 15 minutes
-    scheduler.add_job(func=ransomware_victim_job, trigger="interval", seconds=900)
-    # Groups: every 6 hours
-    scheduler.add_job(func=ransomware_groups_job, trigger="interval", seconds=21600)
-    # ──────────────────────────────────────────────────────────────────────────
-    
+    # Stagger start times so jobs don’t all fire at once on startup
+    now = datetime.now()
+    scheduler.add_job(
+        func=safe_check_link_status, trigger="interval", seconds=21600,
+        start_date=now + timedelta(seconds=60),   # first run: 1 min after boot
+        misfire_grace_time=300
+    )
+    scheduler.add_job(
+        func=safe_discover_new_links, trigger="interval", seconds=86400,
+        start_date=now + timedelta(seconds=120),  # first run: 2 min after boot
+        misfire_grace_time=300
+    )
+    scheduler.add_job(
+        func=ransomware_victim_job, trigger="interval", seconds=900,
+        start_date=now + timedelta(seconds=180),  # first run: 3 min after boot
+        misfire_grace_time=120
+    )
+    scheduler.add_job(
+        func=ransomware_groups_job, trigger="interval", seconds=21600,
+        start_date=now + timedelta(seconds=240),  # first run: 4 min after boot
+        misfire_grace_time=300
+    )
+
     scheduler.start()
-    print("APT Scheduler Initialized.")
+    print("[Scheduler] APT + Ransomware scheduler started.")
+
