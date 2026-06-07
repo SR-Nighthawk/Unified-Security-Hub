@@ -81,7 +81,8 @@ RUN mkdir -p \
 
 # ── Create non-root user for security ─────────────────────────
 RUN groupadd -r sechub && useradd -r -g sechub -d /app sechub \
-    && chown -R sechub:sechub /app
+    && chown -R sechub:sechub /app \
+    && chmod -R 755 /app/database
 
 USER sechub
 
