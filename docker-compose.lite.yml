@@ -1,0 +1,95 @@
+# ═══════════════════════════════════════════════════════════════
+# Unified Security Hub — Lite Docker Compose (Google Cloud e2-micro)
+# ═══════════════════════════════════════════════════════════════
+# Optimized for 1GB RAM — excludes ZAP (needs 1.5GB alone)
+# Features: Auth, AI Chat, APT Intel, Dark Web (Tor), Ransomware Feed,
+#           Nmap Scanner, AI Pentest, Analytics
+#
+# Usage:
+#   docker compose -f docker-compose.lite.yml up -d
+#   docker compose -f docker-compose.lite.yml logs -f app
+# ═══════════════════════════════════════════════════════════════
+
+services:
+  # ── Flask Application ─────────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sechub-app
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - TOR_PROXY_HOST=tor
+      - TOR_PROXY_PORT=9050
+      - SOCKETIO_ASYNC_MODE=eventlet
+      # No ZAP in lite mode
+      - ZAP_API_URL=
+    volumes:
+      - sechub-db:/app/database
+      - sechub-reports:/app/backend/reports
+      - sechub-sessions:/app/backend/sessions
+      - sechub-data:/app/data
+      - sechub-static:/app/static
+      - sechub-frontend-static:/app/frontend/static/reports
+    depends_on:
+      - tor
+    networks:
+      - sechub-net
+    # Memory limit — leave headroom for Tor + Nginx
+    mem_limit: 600m
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
+
+  # ── Nginx Reverse Proxy ───────────────────────────────────
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: sechub-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - sechub-static:/app/static:ro
+    depends_on:
+      - app
+    networks:
+      - sechub-net
+    mem_limit: 64m
+
+  # ── Tor SOCKS5 Proxy ─────────────────────────────────────
+  # Required for dark web / .onion intelligence
+  tor:
+    image: dperson/torproxy:latest
+    container_name: sechub-tor
+    restart: unless-stopped
+    environment:
+      - TOR_NewCircuitPeriod=60
+    networks:
+      - sechub-net
+    mem_limit: 128m
+
+# ── Named Volumes ────────────────────────────────────────────
+volumes:
+  sechub-db:
+    driver: local
+  sechub-reports:
+    driver: local
+  sechub-sessions:
+    driver: local
+  sechub-data:
+    driver: local
+  sechub-static:
+    driver: local
+  sechub-frontend-static:
+    driver: local
+
+# ── Network ──────────────────────────────────────────────────
+networks:
+  sechub-net:
+    driver: bridge
