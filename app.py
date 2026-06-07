@@ -1,5 +1,4 @@
 import os, time, json
-from pathlib import Path
 from flask import Flask, render_template, jsonify, redirect, url_for
 from backend.extensions import db, socketio
 from backend.models import APTGroup, GroupLink, LinkStatusHistory, DiscoveryLog
@@ -21,11 +20,9 @@ from backend.modules.ransomware_module import ransomware_bp
 
 app = Flask(__name__, template_folder='frontend/templates', static_folder='frontend/static')
 
-# Database Setup — use absolute path relative to project root (not CWD)
-# This ensures the DB is found correctly in Docker, Gunicorn, and dev
-BASE_DIR = Path(__file__).resolve().parent
-db_path = BASE_DIR / 'database' / 'apt_intel.db'
-db_path.parent.mkdir(parents=True, exist_ok=True)
+# Database Setup — use /tmp for SQLite to avoid permission issues
+# /tmp is world-writable and SQLite can create lock files there
+db_path = '/tmp/apt_intel.db'
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.getenv("SECRET_KEY", "super-secret-default-key-dev-only")
