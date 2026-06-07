@@ -25,7 +25,10 @@ app = Flask(__name__, template_folder='frontend/templates', static_folder='front
 # This ensures the DB is found correctly in Docker, Gunicorn, and dev
 BASE_DIR = Path(__file__).resolve().parent
 db_path = BASE_DIR / 'database' / 'apt_intel.db'
-db_path.parent.mkdir(parents=True, exist_ok=True)
+db_path.parent.mkdir(parents=True, exist_ok=True, mode=0o755)
+# Ensure directory is writable
+import os
+os.chmod(db_path.parent, 0o755)
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.getenv("SECRET_KEY", "super-secret-default-key-dev-only")
