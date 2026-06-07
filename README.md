@@ -176,6 +176,4 @@ Unified_Security_Hub/
 └── reports/                    # VAPT and pentest results saved in JSON
 ```
 
-## ⚠️ Disclaimer
-**For Educational and Authorized Testing Purposes Only.** 
-The offensive features provided within the Unified Security Hub (ZAP scanning, Nmap arrays, and Autonomous AI Exploitation) perform highly intrusive scans and active exploitations. Only target infrastructure you explicitly own or have documented consent to test.
+
