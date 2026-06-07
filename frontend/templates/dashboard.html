@@ -1,0 +1,422 @@
+{% extends "layout.html" %}
+{% block title %}Unified Security Hub{% endblock %}
+
+{% block content %}
+<!-- HERO -->
+<section class="hero" id="hero">
+  <div class="hero-grid"></div>
+  <div class="hero-eyebrow">VAPT · APT Intelligence · Dark Web · AI Analysis</div>
+  <h1 class="hero-title">
+    <span class="dim">One platform.</span><br/>
+    <strong>Every threat vector.</strong><br/>
+    <span class="dim">Zero blind spots.</span>
+  </h1>
+  <p class="hero-sub">Unified Security Hub combines network scanning, web application testing, dark web monitoring, and AI-powered threat analysis into a single platform for modern security teams.</p>
+  <div class="hero-actions">
+    <a href="/network-scanner" class="btn-lg">Launch free scan →</a>
+    <a href="#platform" class="btn-lg-out">Explore platform</a>
+  </div>
+
+  <!-- 3D card -->
+  <div class="scene" id="scene" style="position:relative">
+    <!-- floating badges -->
+    <div class="float-badge fb1">
+      <div class="fb-label">Scans Today</div>
+      <div class="fb-val" id="dash-recent-scans">12</div>
+      <div class="fb-sub">Last 24 hrs</div>
+    </div>
+    <div class="float-badge fb2">
+      <div class="fb-label">APT groups</div>
+      <div class="fb-val"><span id="badge-apt-tracked">38</span> tracked</div>
+      <div class="fb-sub">Live monitoring</div>
+    </div>
+    <div class="float-badge fb3">
+      <div class="fb-label">System State</div>
+      <div class="fb-val">ONLINE</div>
+      <div class="fb-sub">All services operational</div>
+    </div>
+
+    <div class="card3d" id="card3d">
+      <div class="card3d-inner">
+        <div class="card-top">
+          <div class="card-title-row">
+            <div class="card-icon">
+              <svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="5"/><path d="M8 3v5l3 2"/></svg>
+            </div>
+            <span class="card-h">Active security scan</span>
+          </div>
+          <div class="card-status"><span class="dot-live"></span> Running</div>
+        </div>
+        <div class="scan-rows">
+          <div class="scan-row">
+            <div class="scan-row-top"><span class="scan-label">Network discovery · Live</span><span class="scan-pct">82%</span></div>
+            <div class="bar"><div class="bar-fill fill-a" style="width:82%"></div></div>
+            <div class="scan-sub">Network SYN scan · Initializing workers</div>
+          </div>
+          <div class="scan-row">
+            <div class="scan-row-top"><span class="scan-label">Web application · Scanners</span><span class="scan-pct">61%</span></div>
+            <div class="bar"><div class="bar-fill fill-b" style="width:61%"></div></div>
+            <div class="scan-sub">Web Scanner · Active tests running</div>
+          </div>
+          <div class="scan-row">
+            <div class="scan-row-top"><span class="scan-label">Dark web monitor · APT links</span><span class="scan-pct">94%</span></div>
+            <div class="bar"><div class="bar-fill fill-c" style="width:94%"></div></div>
+            <div class="scan-sub">Checking Tor nodes · Live feed</div>
+          </div>
+        </div>
+        <div class="findings-row">
+          <span class="chip chip-r">Critical</span>
+          <span class="chip chip-a">High</span>
+          <span class="chip chip-b">Medium</span>
+          <span class="chip chip-g">Intelligence Ready</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- STATS -->
+<div class="stats-bar reveal">
+  <div class="stat"><div class="stat-n"><strong id="dash-total-scans">--</strong></div><div class="stat-l">Scans completed</div></div>
+  <div class="stat"><div class="stat-n"><strong id="dash-apt-groups">--</strong></div><div class="stat-l">APT groups tracked</div></div>
+  <div class="stat"><div class="stat-n"><strong id="dash-active-links">--</strong></div><div class="stat-l">Active Infra Links</div></div>
+  <div class="stat"><div class="stat-n"><strong id="dash-ai-sessions">--</strong></div><div class="stat-l">AI Sessions</div></div>
+  
+  <div class="stat" onclick="window.location='/ransomware'" style="cursor:pointer; transition:opacity 0.2s;" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">
+      <div class="stat-n"><strong id="rw-widget-count">--</strong></div>
+      <div class="stat-l" style="display:flex; align-items:center; gap:6px;"><i class="fas fa-virus" style="color:var(--accent2);"></i> Ransomware Victims</div>
+      <div id="rw-widget-group" style="font-size:10px; color:var(--text3); font-family:var(--mono); margin-top:8px; text-transform:uppercase;"></div>
+  </div>
+</div>
+
+<!-- MODULES -->
+<section class="modules-section" id="platform">
+  <div class="section-head reveal">
+    <div class="eyebrow">Platform</div>
+    <h2 class="sh">Four modules. <strong>One unified view.</strong></h2>
+    <p class="sh-sub">Each module works independently — but the real power comes from correlating every signal into a single security picture.</p>
+  </div>
+  <div class="mods-grid reveal">
+    <a href="/network-scanner" class="mod">
+      <div class="mod-icon">
+        <svg viewBox="0 0 18 18"><circle cx="9" cy="9" r="6"/><path d="M9 3v6l3 2"/></svg>
+      </div>
+      <div class="mod-name">Network scanner</div>
+      <p class="mod-desc">Network-layer host discovery, port enumeration, and service fingerprinting across your entire subnet. Detects open ports, running services, OS versions, and vulnerability exposure in minutes.</p>
+      <span class="mod-tag">Network Scanner · TCP/UDP · SYN scan</span>
+      <div class="mod-num">01</div>
+    </a>
+    <a href="/web-scanner" class="mod">
+      <div class="mod-icon">
+        <svg viewBox="0 0 18 18"><path d="M2 9c0-3.9 3.1-7 7-7s7 3.1 7 7"/><path d="M5 9c0-2.2 1.8-4 4-4s4 1.8 4 4"/><circle cx="9" cy="9" r="1.5"/></svg>
+      </div>
+      <div class="mod-name">Web application scanner</div>
+      <p class="mod-desc">Advanced engine integration for automated web app testing. Spider crawling, active scanning, and passive analysis uncover injection flaws, auth bypasses, XSS, and misconfigurations.</p>
+      <span class="mod-tag">Web Scanner · DAST · Spider</span>
+      <div class="mod-num">02</div>
+    </a>
+    <a href="/darkweb" class="mod">
+      <div class="mod-icon">
+        <svg viewBox="0 0 18 18"><circle cx="9" cy="9" r="6"/><path d="M9 6v3M9 12h.01"/></svg>
+      </div>
+      <div class="mod-name">Dark web monitor</div>
+      <p class="mod-desc">Continuously tracks .onion links associated with known APT groups. Monitors link status, response times, and site changes — alerting you the moment adversary infrastructure goes live.</p>
+      <span class="mod-tag">Tor · .onion · Real-time</span>
+      <div class="mod-num">03</div>
+    </a>
+    <a href="/ai-chat" class="mod">
+      <div class="mod-icon">
+        <svg viewBox="0 0 18 18"><path d="M4 14l2-5 3 3 3-7 2 4"/></svg>
+      </div>
+      <div class="mod-name">AI security analyst</div>
+      <p class="mod-desc">Conversational AI trained on security intelligence. Analyze CVEs, interpret scan results, map findings to MITRE ATT&amp;CK, and receive actionable remediation guidance — in natural language.</p>
+      <span class="mod-tag">Claude · MITRE · CVE analysis</span>
+      <div class="mod-num">04</div>
+    </a>
+  </div>
+</section>
+
+<!-- FEATURE: APT -->
+<section class="features-section" id="intelligence">
+  <div class="f-row reveal">
+    <div class="f-vis" style="perspective:600px">
+      <div class="f-vis-pad">
+        <div class="f-vis-head">
+          <span class="f-vis-dot"></span>
+          <span class="f-vis-title">APT group intelligence</span>
+          <span style="margin-left:auto;font-size:10px;color:var(--text3);font-family:var(--mono)">Live tracker</span>
+        </div>
+        <div class="apt-rows" id="apt-feed-list">
+             <div class="empty" style="text-align:center; padding-top: 2rem; font-size: 13px; color: var(--text2);">
+                 Syncing APT ledger...
+             </div>
+        </div>
+      </div>
+    </div>
+    <div class="f-copy">
+      <div class="f-tag">01 — APT intelligence</div>
+      <h3 class="f-title">Track the world's most dangerous <strong>threat actors</strong> in real time</h3>
+      <p class="f-desc">Know your adversaries before they know you. Our continuously updated APT database tracks nation-state groups, their toolkits, techniques, and infrastructure — mapped to MITRE ATT&amp;CK.</p>
+      <ul class="f-pts">
+        <li><span class="f-arr">→</span>Live dark web link monitoring per APT group</li>
+        <li><span class="f-arr">→</span>Threat level classification: LOW · MED · HIGH · CRITICAL</li>
+        <li><span class="f-arr">→</span>MITRE ATT&amp;CK technique mapping for each group</li>
+        <li><span class="f-arr">→</span>Automated alerting when adversary infrastructure activates</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- FEATURE: VAPT -->
+  <div class="f-row rev reveal">
+    <div class="f-vis">
+      <div class="f-vis-pad">
+        <div class="f-vis-head">
+          <span class="f-vis-dot"></span>
+          <span class="f-vis-title">Recent Scans</span>
+        </div>
+        <div class="scan-vis" id="recent-scans-list" style="overflow-y:auto; padding-right:10px;">
+          <div class="empty" style="text-align:center; padding-top: 2rem; font-size: 13px; color: var(--text2);">
+            Fetching recent reports…
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="f-copy">
+      <div class="f-tag">02 — VAPT automation</div>
+      <h3 class="f-title">Automated pentesting, <strong>zero configuration</strong> required</h3>
+      <p class="f-desc">Launch full-spectrum vulnerability assessments in seconds. Network discovery, web application testing, and service enumeration run concurrently — with live progress and exportable reports.</p>
+      <ul class="f-pts">
+        <li><span class="f-arr">→</span>Network engine for network-layer scanning: TCP, UDP, SYN, version detection</li>
+        <li><span class="f-arr">→</span>Web scanner for DAST: spider crawling, injection, auth testing</li>
+        <li><span class="f-arr">→</span>Parallel scan execution via background task queue</li>
+        <li><span class="f-arr">→</span>JSON + HTML reports with severity breakdown and remediation steps</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- FEATURE: AI -->
+  <div class="f-row reveal">
+    <div class="f-vis">
+      <div class="f-vis-pad">
+        <div class="f-vis-head">
+          <span class="f-vis-dot" style="background:var(--accent2);animation:blink 1.5s infinite"></span>
+          <span class="f-vis-title">AI security analyst</span>
+          <span style="margin-left:auto;font-size:10px;color:var(--accent2)">● Thinking</span>
+        </div>
+        <div class="chat-vis">
+          <div>
+            <div class="ai-who">You</div>
+            <div class="ai-msg ai-user">What's the risk of CVE-2024-3400 on our Palo Alto firewall?</div>
+          </div>
+          <div>
+            <div class="ai-who">AI Analyst</div>
+            <div class="ai-msg ai-bot">CVE-2024-3400 is a critical command injection (CVSS 10.0) in PAN-OS GlobalProtect. Your scan shows 192.168.1.47 is running PAN-OS 11.0.1 — confirmed affected. Immediate patching to 11.1.2-h3 is required.</div>
+          </div>
+          <div>
+            <div class="ai-who">You</div>
+            <div class="ai-msg ai-user">Map this to MITRE ATT&amp;CK<span class="ai-cursor"></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="f-copy">
+      <div class="f-tag">03 — AI analysis</div>
+      <h3 class="f-title">Your on-demand <strong>AI security analyst</strong>, available 24/7</h3>
+      <p class="f-desc">Ask plain-English questions about CVEs, scan results, APT techniques, or remediation paths. The AI correlates your findings with threat intelligence and MITRE ATT&amp;CK to give you context-aware guidance.</p>
+      <ul class="f-pts">
+        <li><span class="f-arr">→</span>CVE analysis with version-specific risk assessment</li>
+        <li><span class="f-arr">→</span>Automatic MITRE ATT&amp;CK tactic and technique mapping</li>
+        <li><span class="f-arr">→</span>Remediation priority recommendations with patch links</li>
+        <li><span class="f-arr">→</span>Persistent session history across security investigations</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- MITRE -->
+<section class="mitre-section">
+  <div class="mitre-inner reveal">
+    <div>
+      <div class="eyebrow">ATT&amp;CK Coverage</div>
+      <h2 class="sh" style="margin-top:12px">Map every adversary <strong>technique</strong> before they reach you</h2>
+      <p class="sh-sub" style="margin:14px 0 0;text-align:left">Automatically correlate scan findings against the MITRE ATT&amp;CK framework. Know which tactics are detected, which are active threats, and where your blind spots are.</p>
+      <div style="display:flex;flex-direction:column;gap:12px;margin-top:28px">
+        <div style="display:flex;align-items:center;gap:10px"><div style="width:12px;height:12px;border-radius:3px;background:var(--accent2)"></div><span style="font-size:13px;color:var(--text2)">Technique detected in your environment</span></div>
+        <div style="display:flex;align-items:center;gap:10px"><div style="width:12px;height:12px;border-radius:3px;background:var(--red)"></div><span style="font-size:13px;color:var(--text2)">Active threat — immediate action required</span></div>
+        <div style="display:flex;align-items:center;gap:10px"><div style="width:12px;height:12px;border-radius:3px;background:var(--border)"></div><span style="font-size:13px;color:var(--text2)">Not yet detected or tested</span></div>
+      </div>
+    </div>
+    <div>
+      <div class="heat-label">MITRE ATT&amp;CK tactic coverage</div>
+      <div class="heatmap">
+        <div class="hc hc4"></div><div class="hc hc3"></div><div class="hc hc2"></div><div class="hc hcr3"></div><div class="hc hc1"></div><div class="hc hcr2"></div><div class="hc hc0"></div><div class="hc hc2"></div><div class="hc hcr1"></div>
+        <div class="hc hc3"></div><div class="hc hc4"></div><div class="hc hc0"></div><div class="hc hcr3"></div><div class="hc hc2"></div><div class="hc hc3"></div><div class="hc hc1"></div><div class="hc hc0"></div><div class="hc hc2"></div>
+        <div class="hc hc0"></div><div class="hc hcr2"></div><div class="hc hc2"></div><div class="hc hc4"></div><div class="hc hc1"></div><div class="hc hc0"></div><div class="hc hcr3"></div><div class="hc hc2"></div><div class="hc hc4"></div>
+        <div class="hc hc1"></div><div class="hc hc0"></div><div class="hc hcr1"></div><div class="hc hc2"></div><div class="hc hc4"></div><div class="hc hcr2"></div><div class="hc hc0"></div><div class="hc hc1"></div><div class="hc hc3"></div>
+        <div class="hc hc2"></div><div class="hc hcr3"></div><div class="hc hc0"></div><div class="hc hc1"></div><div class="hc hcr2"></div><div class="hc hc4"></div><div class="hc hc2"></div><div class="hc hc0"></div><div class="hc hc1"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW -->
+<section class="how-section" id="how">
+  <div class="section-head reveal">
+    <div class="eyebrow">How it works</div>
+    <h2 class="sh">From target to intelligence <strong>in three steps</strong></h2>
+  </div>
+  <div class="steps reveal">
+    <div class="step">
+      <div class="step-n">01</div>
+      <div class="step-t">Configure target</div>
+      <p class="step-d">Enter your IP range, domain, or upload a target list. Select scan modules and parameters — or use a preconfigured security profile.</p>
+    </div>
+    <div class="step">
+      <div class="step-n">02</div>
+      <div class="step-t">Run unified scan</div>
+      <p class="step-d">All four modules execute in parallel. Network, web, dark web, and APT correlation run concurrently via background workers.</p>
+    </div>
+    <div class="step">
+      <div class="step-n">03</div>
+      <div class="step-t">Get intelligence</div>
+      <p class="step-d">Receive correlated findings, severity-ranked vulnerabilities, APT threat matches, and AI remediation paths — in JSON, HTML, or natural language.</p>
+    </div>
+  </div>
+</section>
+
+<!-- TESTIMONIALS -->
+<section class="testi-section" id="pricing">
+  <div class="section-head reveal">
+    <div class="eyebrow">Testimonials</div>
+    <h2 class="sh">What <strong>security professionals</strong> say</h2>
+  </div>
+  <div class="testi-grid reveal">
+    <div class="testi-card">
+      <p class="testi-q">"We replaced three separate tools with Unified Security Hub. The APT correlation alone is worth it."</p>
+      <div class="testi-a">
+        <div class="ava">RK</div>
+        <div><div class="testi-name">Rohan Kapoor</div><div class="testi-role">Head of Red Team · CipherGrid</div></div>
+      </div>
+    </div>
+    <div class="testi-card">
+      <p class="testi-q">"The AI analyst is genuinely impressive. I asked it to map our web scanner findings to MITRE ATT&amp;CK and it gave me a prioritized action plan in 30 seconds."</p>
+      <div class="testi-a">
+        <div class="ava">SM</div>
+        <div><div class="testi-name">Sara Mehta</div><div class="testi-role">CISO · InfraSec Solutions</div></div>
+      </div>
+    </div>
+    <div class="testi-card">
+      <p class="testi-q">"Clean, structured reports that are immediately shareable with clients. The HTML export with severity breakdown cuts our pentest reporting time by 60%."</p>
+      <div class="testi-a">
+        <div class="ava">DL</div>
+        <div><div class="testi-name">David Liu</div><div class="testi-role">Security Engineer · VaultSec</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section">
+  <h2 class="cta-t reveal">Your attack surface<br/>won't wait.<br/><strong>Neither should you.</strong></h2>
+  <p class="cta-sub reveal">Start scanning in under 60 seconds.</p>
+  <div class="cta-btns reveal">
+    <a href="/network-scanner" class="btn-lg">Launch your first scan →</a>
+    <a href="/reports" class="btn-lg-out">View Reports</a>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const card = document.getElementById('card3d');
+    const scene = document.getElementById('scene');
+    
+    // Smooth 3D tilt logic (combined with the existing glow script dynamically updating mx,my context via cursor tracking)
+    document.addEventListener('mousemove', e => {
+      mx = e.clientX; my = e.clientY;
+      if(card){
+        const rect = scene.getBoundingClientRect();
+        const cx = rect.left + rect.width/2;
+        const cy = rect.top + rect.height/2;
+        const dx = (mx - cx) / (rect.width/2);
+        const dy = (my - cy) / (rect.height/2);
+        const clamp = (v,min,max)=>Math.min(max,Math.max(min,v));
+        const rx = clamp(-dy * 8, -8, 8);
+        const ry = clamp(dx * 10, -10, 10);
+        card.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg)`;
+      }
+    });
+
+    // Populate data
+    async function loadDashboard() {
+        try {
+            const res = await fetch('/api/dashboard-stats');
+            const data = await res.json();
+
+            const total = data.total_scans || 0;
+            const apt = data.apt_groups || 0;
+            const infra = data.active_links || 0;
+            const ai = data.ai_sessions || 0;
+
+            document.getElementById('dash-total-scans').textContent = total;
+            document.getElementById('dash-apt-groups').textContent = apt;
+            document.getElementById('dash-active-links').textContent = infra;
+            document.getElementById('dash-ai-sessions').textContent = ai;
+            
+            const dashRecent = document.getElementById('dash-recent-scans');
+            if (dashRecent) dashRecent.textContent = data.recent_scans?.length || 0;
+            
+            const elAPTCount = document.getElementById('badge-apt-tracked');
+            if (elAPTCount) elAPTCount.textContent = apt;
+
+            // Ransomware widget
+            fetch('/api/ransomware/stats').then(r => r.json()).then(data => {
+                document.getElementById('rw-widget-count').textContent = data.victims_this_week || '--';
+                document.getElementById('rw-widget-group').textContent = `Top: ${data.top_group || 'N/A'}`;
+            }).catch(e => console.error("Could not load ransomware stats:", e));
+
+            // Recent scans list
+            const scanList = document.getElementById('recent-scans-list');
+            if (data.recent_scans && data.recent_scans.length > 0) {
+                scanList.innerHTML = data.recent_scans.map(s => {
+                    const tool = (s.tool || '').toUpperCase();
+                    const colorFill = tool === 'NETWORK' ? 'fa' : 'fb'; // from css classes
+                    return `
+                    <div class="sv-item" style="margin-bottom:14px;">
+                        <a href="/report/${s.id}" style="text-decoration:none; display:inherit; color:inherit;">
+                            <div class="sv-top"><span>${tool} · ${s.target}</span><span style="font-family:var(--mono);font-weight:600">ID: ${s.id.substring(0,4)}</span></div>
+                            <div class="sv-bar"><div class="sv-fill ${colorFill}" style="width:100%"></div></div>
+                            <div class="sv-sub">${new Date(s.time).toLocaleString()}</div>
+                        </a>
+                    </div>`;
+                }).join('');
+            } else {
+                scanList.innerHTML = '<div class="empty" style="text-align:center; padding-top: 2rem; font-size: 13px; color: var(--text2);">No reports. Run your first scan.</div>';
+            }
+
+            // APT Feed list
+            const aptList = document.getElementById('apt-feed-list');
+            if (data.apt_feed && data.apt_feed.length > 0) {
+                aptList.innerHTML = data.apt_feed.map(g => {
+                    const thr = (g.threat || 'MEDIUM').toUpperCase();
+                    const sevClass = thr === 'CRITICAL' ? 'sev-c' : thr === 'HIGH' ? 'sev-h' : thr === 'MEDIUM' ? 'sev-m' : '';
+                    let statusCls = g.active ? 'active' : 'offline';
+                    let statusLabel = g.active ? '● Active' : '○ Offline';
+                    return `
+                    <a href="/apt/${g.id}" class="apt-row" style="text-decoration:none; color:inherit; display:grid;">
+                        <div class="apt-name"><div class="apt-d ${g.active?'':'off'}"></div>${g.name}</div>
+                        <span><span class="severity ${sevClass}">${thr}</span></span>
+                        <span class="apt-status ${statusCls}">${statusLabel}</span>
+                    </a>`;
+                }).join('');
+            } else {
+                aptList.innerHTML = '<div class="empty" style="text-align:center; padding-top: 2rem; font-size: 13px; color: var(--text2);">APT database not populated yet.</div>';
+            }
+        } catch(e) {
+            console.error('Dashboard load error:', e);
+        }
+    }
+
+    loadDashboard();
+</script>
+{% endblock %}

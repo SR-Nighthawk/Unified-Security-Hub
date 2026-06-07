@@ -1,0 +1,187 @@
+{% extends "layout.html" %}
+{% block title %}Victims — Ransomware Intel{% endblock %}
+{% block content %}
+<div class="page-container">
+    <div class="page-header" style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:24px;">
+        <div>
+            <div style="font-size:12px; color:var(--accent2); letter-spacing:0.1em; text-transform:uppercase; font-weight:600; margin-bottom:8px;">Victim Analysis</div>
+            <h2 class="page-title"><i class="fas fa-list" style="color:var(--text3); margin-right:8px;"></i> Global Disclosures DB</h2>
+        </div>
+        <a href="/ransomware" class="btn-sm"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+    </div>
+
+    <!-- Filters -->
+    <div class="panel" style="margin-bottom:24px; padding:16px 24px; display:flex; gap:12px; align-items:center;">
+        <i class="fas fa-filter" style="color:var(--text3);"></i>
+        <input type="text" id="f-group" placeholder="Filter by Group..." class="form-input" style="width:200px; padding:8px 12px; font-size:12px;">
+        <input type="text" id="f-country" placeholder="Country Code (e.g. US)" class="form-input" style="width:160px; padding:8px 12px; font-size:12px;">
+        <input type="text" id="f-sector" placeholder="Target Sector..." class="form-input" style="width:200px; padding:8px 12px; font-size:12px;">
+        <button class="btn-sm btn-dark" onclick="loadVictims(1)" style="margin-left:auto;">Apply Filters</button>
+        <button class="btn-sm" onclick="clearFilters()">Clear</button>
+    </div>
+
+    <div class="table-wrapper">
+        <table class="data-table">
+            <thead>
+                <tr><th>#</th><th>Victim Entity</th><th>Threat Group</th><th>Affected Sector</th><th>Locale</th><th>Disclosure Time</th><th>Proofs</th><th>Infostealer</th></tr>
+            </thead>
+            <tbody id="victims-body">
+                <tr><td colspan="8" style="text-align:center; padding:48px; color:var(--text3);">Loading database...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    <div id="pagination" style="display:flex; gap:6px; justify-content:center; margin-top:24px;"></div>
+</div>
+
+<!-- VICTIM DOSSIER MODAL -->
+<div id="victimModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; align-items:center; justify-content:center; padding:24px; backdrop-filter:blur(4px);">
+    <div style="background:var(--bg); border:1px solid var(--border2); border-radius:12px; width:100%; max-width:800px; max-height:90vh; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 24px 48px rgba(0,0,0,0.5);">
+        
+        <!-- Header -->
+        <div style="padding:16px 24px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; background:var(--bg2);">
+            <div>
+                <div style="font-size:11px; color:var(--text3); font-family:var(--mono); text-transform:uppercase; margin-bottom:4px;" id="m-discovered"></div>
+                <h3 style="margin:0; font-size:20px; font-weight:600; display:flex; align-items:center; gap:8px;" id="m-name"></h3>
+            </div>
+            <button onclick="closeModal()" style="background:transparent; border:none; color:var(--text3); font-size:20px; cursor:pointer;"><i class="fas fa-times"></i></button>
+        </div>
+
+        <!-- Body -->
+        <div style="padding:24px; overflow-y:auto; flex:1;">
+            
+            <div style="display:flex; gap:24px; margin-bottom:24px;">
+                <div style="flex:1;">
+                    <div style="font-size:12px; color:var(--text3); margin-bottom:4px; text-transform:uppercase; letter-spacing:0.05em;">Attributing Threat Actor</div>
+                    <div style="margin-bottom:16px;"><span class="chip chip-r" id="m-group"></span></div>
+                    
+                    <div style="font-size:12px; color:var(--text3); margin-bottom:4px; text-transform:uppercase; letter-spacing:0.05em;">Victim Profile</div>
+                    <div style="display:flex; gap:8px; margin-bottom:16px;">
+                        <span class="chip" style="background:var(--border);" id="m-sector"></span>
+                        <span class="chip" style="background:var(--border);" id="m-country"></span>
+                    </div>
+
+                    <div style="font-size:12px; color:var(--text3); margin-bottom:4px; text-transform:uppercase; letter-spacing:0.05em;">Description</div>
+                    <div style="font-size:13px; color:var(--text2); line-height:1.6;" id="m-desc"></div>
+                </div>
+
+                <div style="flex:1; border-left:1px solid var(--border); padding-left:24px;">
+                    <div style="font-size:12px; color:var(--text3); margin-bottom:4px; text-transform:uppercase; letter-spacing:0.05em;">Intelligence Proofs</div>
+                    <div id="m-proof-actions" style="margin-bottom:16px;">
+                        <!-- Action buttons injected here -->
+                    </div>
+                    <div style="background:var(--bg2); border-radius:8px; border:1px solid var(--border); p-2; overflow:hidden; position:relative; min-height:120px;" id="m-proof-img-container">
+                        <!-- Img injected here -->
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+let currentPage = 1;
+
+let victimCache = {}; // Local memory layer to hold full victim arrays for click events
+
+async function loadVictims(page = 1) {
+    currentPage = page;
+    const group = document.getElementById('f-group').value;
+    const country = document.getElementById('f-country').value;
+    const sector = document.getElementById('f-sector').value;
+
+    const params = new URLSearchParams({ page, per_page: 50 });
+    if (group) params.append('group', group);
+    if (country) params.append('country', country);
+    if (sector) params.append('sector', sector);
+
+    try {
+        const res = await fetch(`/api/ransomware/victims?${params}`);
+        const data = await res.json();
+        
+        const tbody = document.getElementById('victims-body');
+        if (data.victims && data.victims.length > 0) {
+            victimCache = {};
+            tbody.innerHTML = data.victims.map((v, i) => {
+                victimCache[v.id] = v;
+                return `
+                <tr style="transition:background 0.2s; cursor:pointer;" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''" onclick="showVictimDetails('${v.id}')">
+                    <td style="color:var(--text3); font-family:var(--mono);">${(page - 1) * 50 + i + 1}</td>
+                    <td style="font-weight:500;"><i class="fas fa-search" style="color:var(--accent2); font-size:10px; margin-right:6px;"></i> ${v.name}</td>
+                    <td><span class="chip chip-b">${v.group_name}</span></td>
+                    <td>${v.sector || '—'}</td>
+                    <td><span class="chip" style="background:var(--border);">${v.country || '—'}</span></td>
+                    <td style="font-family:var(--mono); font-size:11px; color:var(--text2);">${v.discovered || '—'}</td>
+                    <td>${v.screenshot || v.post_url ? '<i class="fas fa-camera" style="color:var(--text); font-size:13px; opacity:0.8;"></i>' : '—'}</td>
+                    <td>${v.infostealer ? '<span class="chip chip-a"><i class="fas fa-mask"></i> YES</span>' : '—'}</td>
+                </tr>`;
+            }).join('');
+        } else {
+            tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:64px 0; color:var(--text2);">
+                <div style="font-size:32px; color:var(--border2); margin-bottom:16px;"><i class="fas fa-folder-open"></i></div>
+                No records matched your search filters.
+            </td></tr>`;
+        }
+
+        let pages = '';
+        if (data.pages > 1) {
+            let startP = Math.max(1, page - 3);
+            let endP = Math.min(data.pages, page + 3);
+            for (let p = startP; p <= endP; p++) {
+                pages += `<button class="btn-sm ${p === page ? 'btn-dark' : ''}" style="${p===page?'':'background:var(--surface)'}" onclick="loadVictims(${p})">${p}</button>`;
+            }
+        }
+        document.getElementById('pagination').innerHTML = pages;
+    } catch(e) {
+        document.getElementById('victims-body').innerHTML = `<tr><td colspan="8" style="text-align:center; padding:32px; color:var(--red);">Failed to load victims database.</td></tr>`;
+    }
+}
+
+function showVictimDetails(id) {
+    const v = victimCache[id];
+    if(!v) return;
+
+    document.getElementById('m-name').innerHTML = `<i class="fas fa-building" style="color:var(--text3); font-size:16px;"></i> ${v.name}`;
+    document.getElementById('m-discovered').innerText = `Disclosure: ${v.discovered || 'Unknown Time'}`;
+    document.getElementById('m-group').innerText = v.group_name;
+    document.getElementById('m-sector').innerText = v.sector || 'Unknown Sector';
+    document.getElementById('m-country').innerText = v.country || 'Global';
+    document.getElementById('m-desc').innerText = v.description || 'No extended intelligence description provided for this disclosure.';
+
+    let actions = '';
+    if(v.post_url) {
+        actions += `<a href="${v.post_url}" target="_blank" class="btn-sm" style="background:var(--red); color:#fff; border:none; margin-right:8px;"><i class="fas fa-mask"></i> Onion Link</a>`;
+    }
+    if(v.website) {
+        actions += `<a href="https://${v.website}" target="_blank" class="btn-sm"><i class="fas fa-globe"></i> Victim Site</a>`;
+    }
+    
+    if(!actions) actions = '<span style="color:var(--text3); font-size:12px;">No external references.</span>';
+    document.getElementById('m-proof-actions').innerHTML = actions;
+
+    if(v.screenshot) {
+        document.getElementById('m-proof-img-container').innerHTML = `
+            <div style="padding:12px; font-size:11px; color:var(--text3); font-family:var(--mono); border-bottom:1px solid var(--border);">POST SCREENSHOT</div>
+            <img src="${v.screenshot}" style="width:100%; height:auto; display:block;" onerror="this.onerror=null; this.parentElement.innerHTML='<div style=\\'padding:32px; text-align:center; color:var(--red);\\'><i class=\\'fas fa-image-slash fa-2x\\'></i><div style=\\'margin-top:8px;\\'>Image Expired</div></div>'">
+        `;
+    } else {
+        document.getElementById('m-proof-img-container').innerHTML = `<div style="padding:48px 0; text-align:center; color:var(--text3);"><i class="fas fa-eye-slash fa-2x"></i><div style="margin-top:12px; font-size:12px;">No screenshot proof retained.</div></div>`;
+    }
+
+    document.getElementById('victimModal').style.display = 'flex';
+}
+
+function closeModal() {
+    document.getElementById('victimModal').style.display = 'none';
+}
+
+function clearFilters() {
+    ['f-group','f-country','f-sector'].forEach(id => document.getElementById(id).value = '');
+    loadVictims(1);
+}
+
+loadVictims();
+</script>
+{% endblock %}

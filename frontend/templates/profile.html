@@ -1,0 +1,124 @@
+{% extends "layout.html" %}
+{% block title %}My Profile | SecHub{% endblock %}
+
+{% block content %}
+<div class="page-container reveal">
+    <div class="page-header" style="display:flex; justify-content:space-between; align-items:flex-end;">
+        <div>
+            <div class="eyebrow" style="margin-bottom:8px;">Account</div>
+            <h1 class="page-title">My Profile</h1>
+            <p class="page-subtitle">Your account details and personal activity statistics.</p>
+        </div>
+        <a href="/logout" class="btn-lg-out" style="color:var(--red); border-color:var(--red);"><i class="fas fa-sign-out-alt"></i> Logout</a>
+    </div>
+
+    <!-- Profile Card -->
+    <div class="panel" style="margin-bottom:24px; padding:32px;">
+        <div style="display:flex; align-items:center; gap:24px;">
+            <div id="profileAvatar" style="width:72px; height:72px; border-radius:50%; background:linear-gradient(135deg, var(--accent1), var(--accent2)); display:flex; align-items:center; justify-content:center; font-size:28px; font-weight:800; color:white;">
+                {{ user.username[0].upper() }}
+            </div>
+            <div style="flex:1;">
+                <div style="font-size:22px; font-weight:700; margin-bottom:4px;">{{ user.username }}</div>
+                <div style="font-size:14px; color:var(--text3); font-family:var(--mono);">{{ user.email }}</div>
+                <div style="font-size:12px; color:var(--text3); margin-top:8px;">
+                    <i class="fas fa-calendar-check" style="color:var(--accent2);"></i>
+                    Member since {{ user.created_at.strftime('%B %d, %Y') if user.created_at else 'N/A' }}
+                </div>
+            </div>
+            <div class="status-pill"><span class="dot-live"></span> Active Session</div>
+        </div>
+    </div>
+
+    <!-- Stats Bar -->
+    <div class="stats-bar" style="border: 1px solid var(--border2); border-radius: var(--radius); margin-bottom: 24px; overflow: hidden;">
+        <div class="stat">
+            <div class="stat-n"><strong id="statScans" style="color:var(--accent1);">-</strong></div>
+            <div class="stat-l">Total Scans</div>
+        </div>
+        <div class="stat">
+            <div class="stat-n"><strong id="statChats" style="color:var(--accent2);">-</strong></div>
+            <div class="stat-l">AI Sessions</div>
+        </div>
+        <div class="stat">
+            <div class="stat-n"><strong id="statHigh" style="color:var(--red);">-</strong></div>
+            <div class="stat-l">High Findings</div>
+        </div>
+        <div class="stat">
+            <div class="stat-n"><strong id="statTools" style="color:var(--amber);">2</strong></div>
+            <div class="stat-l">Active Tools</div>
+        </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="panel" style="padding:0; overflow:hidden;">
+        <div style="padding:16px; border-bottom:1px solid var(--border2); display:flex; justify-content:space-between; align-items:center;">
+            <div style="font-size:12px; font-weight:600;"><i class="fas fa-history"></i> Recent Activity</div>
+            <a href="/reports" class="btn-sm"><i class="fas fa-file-lines"></i> All Reports</a>
+        </div>
+        <div style="flex:1; overflow:auto; max-height:400px;">
+            <table class="data-table" id="activityTable">
+                <thead>
+                    <tr>
+                        <th>Tool</th>
+                        <th>Target</th>
+                        <th>Time</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td colspan="4" style="text-align:center; padding:40px 16px; color:var(--text3); font-family:var(--mono);">Loading activity...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    async function loadProfileStats() {
+        try {
+            const res = await fetch('/api/dashboard-stats');
+            const data = await res.json();
+
+            document.getElementById('statScans').innerText = data.total_scans ?? 0;
+            document.getElementById('statChats').innerText = data.ai_sessions ?? 0;
+
+            // Count high findings across recent scans
+            let highCount = 0;
+            (data.recent_scans || []).forEach(s => {
+                // high findings would come from ZAP reports
+            });
+            document.getElementById('statHigh').innerText = highCount;
+
+            const tbody = document.querySelector('#activityTable tbody');
+            const scans = data.recent_scans || [];
+
+            if (scans.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:40px 16px; color:var(--text3); font-family:var(--mono);">No activity yet. Run your first scan!</td></tr>';
+                return;
+            }
+
+            const toolIcons = { NETWORK: 'fa-network-wired', WEBAPP: 'fa-spider', DARK_WEB: 'fa-user-secret' };
+            const toolColors = { NETWORK: 'var(--accent2)', WEBAPP: 'var(--amber)', DARK_WEB: 'var(--red)' };
+
+            tbody.innerHTML = scans.map(s => `
+                <tr>
+                    <td><span style="font-size:10px; font-weight:700; font-family:var(--mono); padding:3px 8px; border-radius:4px; background:rgba(99,102,241,0.1); color:${toolColors[s.tool] || 'var(--accent2)'};">
+                        <i class="fas ${toolIcons[s.tool] || 'fa-shield-alt'}"></i> ${s.tool}</span>
+                    </td>
+                    <td style="font-weight:500; font-size:13px;">${s.target}</td>
+                    <td style="font-size:12px; color:var(--text3); font-family:var(--mono);">${s.time}</td>
+                    <td><a href="/report/${s.id}" class="btn-sm"><i class="fas fa-arrow-right"></i> View</a></td>
+                </tr>
+            `).join('');
+        } catch(e) {
+            console.error(e);
+        }
+    }
+    loadProfileStats();
+</script>
+{% endblock %}

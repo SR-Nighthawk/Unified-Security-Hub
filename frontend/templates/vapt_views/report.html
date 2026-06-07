@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unified Security Hub | Security Report</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #fafafa;
+            --surface: #ffffff;
+            --border: rgba(0,0,0,0.08);
+            --text: #0a0a0b;
+            --text-sec: #5a5a68;
+            --text-muted: #9898a6;
+            --accent: #1a1aff;
+            --blue: #3b82f6; --green: #16a34a; --red: #dc2626; --orange: #d97706; --purple: #a855f7;
+        }
+        body { background: var(--bg); font-family: 'Inter', sans-serif; color: var(--text); padding: 2rem; margin: 0; line-height: 1.6; }
+        .container { max-width: 1000px; margin: 0 auto; background: var(--surface); padding: 3rem; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.03); border: 1px solid var(--border); }
+        .brand { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 3rem; padding-bottom: 2rem; border-bottom: 1px solid var(--border); }
+        .brand-icon { width: 36px; height: 36px; background: var(--accent); border-radius: 8px; display: grid; place-items: center; }
+        .brand-icon i { color: white; font-size: 0.85rem; }
+        .brand h1 { font-size: 1.2rem; font-weight: 700; letter-spacing: -0.02em; margin: 0;}
+        h1.title { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.75rem; }
+        h1.title i { color: var(--accent); font-size: 1.2rem; }
+        h2 { font-size: 1.1rem; font-weight: 600; margin: 2.5rem 0 1rem; display: flex; align-items: center; gap: 0.5rem; }
+        h2 i { color: var(--text-sec); font-size: 0.95rem; }
+        .meta-box { background: var(--bg); border: 1px solid var(--border); padding: 1.5rem; border-radius: 8px; margin: 1.5rem 0; display: flex; flex-wrap: wrap; gap: 3rem; }
+        .meta-item strong { display: block; color: var(--text-sec); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; margin-bottom: 4px; }
+        .meta-item span { font-size: 1.15rem; font-weight: 600; font-family: 'JetBrains Mono', monospace; display: block; }
+        table { width: 100%; border-collapse: collapse; margin-top: 1rem; font-size: 0.88rem; }
+        th, td { padding: 1rem 1.25rem; text-align: left; border-bottom: 1px solid var(--border); }
+        th { background: var(--bg); color: var(--text-sec); font-weight: 600; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; }
+        tr:last-child td { border-bottom: none; }
+        .badge { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.25rem 0.6rem; border-radius: 4px; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; font-family: 'JetBrains Mono', monospace; }
+        .badge-open { background: rgba(22,163,74,0.1); color: var(--green); }
+        .badge-high { background: rgba(220,38,38,0.1); color: var(--red); }
+        .badge-medium { background: rgba(217,119,6,0.1); color: var(--orange); }
+        .badge-low { background: rgba(59,130,246,0.1); color: var(--blue); }
+        .badge-info { background: rgba(107,114,128,0.1); color: var(--text-sec); }
+        .ai-summary-box { margin-top: 3rem; padding: 2rem; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; border-left: 4px solid var(--accent); }
+        .ai-summary-box .header { font-weight: 600; color: var(--text); margin-bottom: 1rem; font-size: 1.1rem; display: flex; align-items: center; gap: 0.5rem; }
+        .ai-summary-box .content { font-size: 0.95rem; white-space: pre-wrap; color: var(--text-sec); line-height: 1.7; }
+        .print-area { margin-top: 3rem; text-align: center; border-top: 1px solid var(--border); padding-top: 2rem; }
+        .print-btn { background: var(--text); color: white; padding: 0.75rem 2rem; border: none; border-radius: 6px; font-weight: 500; cursor: pointer; font-size: 0.9rem; font-family: 'Inter', sans-serif; display: inline-flex; align-items: center; gap: 0.5rem; transition: background 0.2s; }
+        .print-btn:hover { background: var(--text-sec); }
+        .footer { text-align: center; margin-top: 3rem; font-size: 0.75rem; color: var(--text-muted); padding-top: 1rem; }
+        @media print { 
+            .no-print { display: none !important; } 
+            body { background: white; padding: 0; } 
+            .container { box-shadow: none; border: none; padding: 0; max-width: 100%; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="brand no-print">
+        <div class="brand-icon"><i class="fas fa-shield"></i></div>
+        <h1>Unified Security Hub</h1>
+    </div>
+    
+    {% if scan_tool == 'NETWORK' %}
+    <h1 class="title"><i class="fas fa-network-wired"></i> Network Security Report</h1>
+    <div class="meta-box">
+        <div class="meta-item"><strong>Target</strong><span>{{ data.target }}</span></div>
+        <div class="meta-item"><strong>Scan Profile</strong><span>{{ data.scan_type }}</span></div>
+        <div class="meta-item"><strong>Duration</strong><span>{{ data.duration }}</span></div>
+        <div class="meta-item"><strong>Hosts Discovered</strong><span>{{ data.hosts }}</span></div>
+        <div class="meta-item"><strong>Open Ports</strong><span style="color: var(--green);">{{ data.open_ports }}</span></div>
+    </div>
+    <h2><i class="fas fa-server"></i> Service Details</h2>
+    <div style="border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
+        <table>
+            <tr><th>Host</th><th>Port/Protocol</th><th>State</th><th>Service</th><th>Version Info</th></tr>
+            {% for svc in data.services %}
+            <tr>
+                <td style="font-family: 'JetBrains Mono', monospace; font-size: 0.82rem;">{{ svc.host }}</td>
+                <td style="font-family: 'JetBrains Mono', monospace; font-size: 0.82rem;">{{ svc.port }}/{{ svc.protocol }}</td>
+                <td><span class="badge badge-open">{{ svc.state }}</span></td>
+                <td style="font-weight: 500;">{{ svc.service }}</td>
+                <td style="color: var(--text-sec); font-size: 0.82rem;">{{ svc.product }} {{ svc.version }}</td>
+            </tr>
+            {% endfor %}
+            {% if not data.services %}
+            <tr><td colspan="5" style="text-align:center; padding:2rem; color:var(--text-muted);">No services discovered.</td></tr>
+            {% endif %}
+        </table>
+    </div>
+    {% endif %}
+
+    {% if scan_tool == 'WEBAPP' %}
+    <h1 class="title"><i class="fas fa-spider"></i> Web Vulnerability Report</h1>
+    <div class="meta-box">
+        <div class="meta-item"><strong>Target</strong><span>{{ data.target }}</span></div>
+        <div class="meta-item"><strong>Generated On</strong><span>{{ data.generated_on }}</span></div>
+        <div class="meta-item"><strong>Total Alerts</strong><span style="color: var(--red);">{{ data.total }}</span></div>
+    </div>
+    <h2><i class="fas fa-exclamation-triangle"></i> Alert Details</h2>
+    <div style="border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
+        <table>
+            <tr><th>Risk</th><th>Alert Name</th><th>Confidence</th><th>Description</th></tr>
+            {% for alert in data.alerts %}
+            <tr>
+                <td><span class="badge badge-{{ alert.risk|lower }}">{{ alert.risk }}</span></td>
+                <td style="font-weight: 500;">{{ alert.name }}</td>
+                <td style="font-size: 0.82rem; color: var(--text-sec);">{{ alert.confidence }}</td>
+                <td style="font-size: 0.82rem; color: var(--text-sec); max-width: 400px; line-height:1.5;">{{ alert.description[:200] }}...</td>
+            </tr>
+            {% endfor %}
+            {% if not data.alerts %}
+            <tr><td colspan="4" style="text-align:center; padding:2rem; color:var(--text-muted);">No vulnerabilities discovered.</td></tr>
+            {% endif %}
+        </table>
+    </div>
+    {% endif %}
+
+    {% if data.ai_summary %}
+    <div class="ai-summary-box">
+        <div class="header"><i class="fas fa-brain" style="color:var(--accent);"></i> AI Executive Summary</div>
+        <div class="content">{{ data.ai_summary }}</div>
+    </div>
+    {% endif %}
+
+    <div class="print-area no-print">
+        <button onclick="window.print()" class="print-btn"><i class="fas fa-print"></i> Print Report</button>
+    </div>
+
+    <div class="footer">
+        <p>&copy; 2026 Unified Security Hub — Automated Security Operations</p>
+    </div>
+</div>
+
+<script>
+    window.onload = () => {
+        const params = new URLSearchParams(window.location.search);
+        if(params.get('print') === 'true') setTimeout(() => window.print(), 500);
+    };
+</script>
+</body>
+</html>

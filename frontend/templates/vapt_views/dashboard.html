@@ -1,0 +1,71 @@
+{% extends "layout.html" %}
+{% set active_page = 'dashboard' %}
+{% block title %}VAPT SOC Hub | Dashboard{% endblock %}
+
+{% block styles %}
+<style>
+    .welcome-header { margin-bottom: 3rem; }
+    .hub-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 1.5rem; }
+    .hub-card { 
+        background: linear-gradient(135deg, var(--bg-card), var(--bg-surface));
+        border: 1px solid var(--border); border-radius: 24px; padding: 2rem;
+        display: flex; flex-direction: column; gap: 1rem; transition: transform 0.2s, border-color 0.2s;
+        text-decoration: none; color: inherit;
+    }
+    .hub-card:hover { transform: translateY(-3px); border-color: var(--accent-blue); }
+    .hub-icon { font-size: 2.5rem; color: var(--accent-blue); margin-bottom: 0.5rem; }
+    .hub-title { font-size: 1.5rem; font-weight: 700; }
+    .hub-desc { color: var(--text-secondary); font-size: 0.95rem; line-height: 1.6; }
+    .hub-footer { margin-top: auto; display: flex; justify-content: space-between; align-items: center; padding-top: 1.5rem; border-top: 1px solid var(--border); }
+    .status-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent-green); display: inline-block; margin-right: 0.5rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="welcome-header">
+    <h1 style="font-size: 2.5rem; margin-bottom: 0.5rem;">Secure Operations Center</h1>
+    <p style="color: var(--text-secondary); font-size: 1.1rem;">Vulnerability Assessment & Penetration Testing Execution Environment</p>
+</div>
+
+<div class="hub-grid">
+    <a href="/network-scanner" class="hub-card">
+        <div class="hub-icon"><i class="fas fa-network-wired"></i></div>
+        <div class="hub-title">Network Discovery</div>
+        <p class="hub-desc">Map your infrastructure, identify hosts, and discover open ports with real-time network scanning and service fingerprinting.</p>
+        <div class="hub-footer">
+            <span style="font-size: 0.8rem;"><span class="status-dot"></span> System Ready</span>
+            <span class="btn btn-primary" style="padding: 0.5rem 1rem; font-size: 0.8rem;">Launch Scanner</span>
+        </div>
+    </a>
+
+    <a href="/web-scanner" class="hub-card">
+        <div class="hub-icon" style="color: var(--accent-purple);"><i class="fas fa-spider"></i></div>
+        <div class="hub-title">Web Vulnerability</div>
+        <p class="hub-desc">Execute deep DAST analysis on web applications to identify SQLi, XSS, and broken access controls.</p>
+        <div class="hub-footer">
+            <span style="font-size: 0.8rem;"><span class="status-dot"></span> Engine Initialized</span>
+            <span class="btn btn-primary" style="background: var(--accent-purple); border-color: var(--accent-purple); padding: 0.5rem 1rem; font-size: 0.8rem;">Start Attack</span>
+        </div>
+    </a>
+
+    <a href="/analytics" class="hub-card">
+        <div class="hub-icon" style="color: var(--accent-orange);"><i class="fas fa-project-diagram"></i></div>
+        <div class="hub-title">Unified Analytics</div>
+        <p class="hub-desc">Correlate data between Network and Web scans to visualize attack paths and prioritize remediation with exploitability scoring.</p>
+        <div class="hub-footer">
+            <span style="font-size: 0.8rem;"><i class="fas fa-sync fa-spin" style="margin-right: 0.5rem;"></i> Auto-sync Enabled</span>
+            <span class="btn btn-secondary" style="padding: 0.5rem 1rem; font-size: 0.8rem;">Compare Results</span>
+        </div>
+    </a>
+
+    <a href="/ai-chat" class="hub-card">
+        <div class="hub-icon" style="color: var(--accent-green);"><i class="fas fa-brain"></i></div>
+        <div class="hub-title">Cyber AI Expert</div>
+        <p class="hub-desc">Consult with your on-site security specialist. Analyze logs, reports, and code snippets through advanced local LLM intelligence.</p>
+        <div class="hub-footer">
+            <span style="font-size: 0.8rem;"><span class="status-dot"></span> Llama Ready</span>
+            <span class="btn btn-secondary" style="padding: 0.5rem 1rem; font-size: 0.8rem;">Open Chat</span>
+        </div>
+    </a>
+</div>
+{% endblock %}

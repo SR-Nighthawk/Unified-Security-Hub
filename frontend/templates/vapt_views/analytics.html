@@ -1,0 +1,324 @@
+{% extends "layout.html" %}
+{% set active_page = 'analytics' %}
+{% block title %}Vulnerability Intelligence | Unified Security Hub{% endblock %}
+
+{% block styles %}
+<script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose', flowchart: { useMaxWidth: true, htmlLabels: true, curve: 'basis' } });
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="page-container reveal" style="padding-top: 60px;">
+    <!-- Page Header -->
+    <div class="page-header" style="display:flex; justify-content:space-between; align-items:flex-end;">
+        <div>
+            <div class="eyebrow" style="margin-bottom:8px;">OVERVIEW</div>
+            <h1 class="page-title">Analytics Dashboard</h1>
+            <p class="page-subtitle">Scan trends, risk distribution, and correlation engine for attack path mapping.</p>
+        </div>
+        <div style="display:flex; gap:12px;">
+            <button onclick="window.print()" class="btn-lg-out"><i class="fas fa-file-pdf"></i> Export PDF</button>
+        </div>
+    </div>
+
+    <!-- Top Stats -->
+    <div class="stats-bar" style="border: 1px solid var(--border2); border-radius: var(--radius); margin-bottom: 24px;">
+        <div class="stat" onclick="window.location.href='/reports'" style="cursor:pointer; transition:background 0.2s;">
+            <div class="stat-n"><strong style="color:var(--accent2);">{{ stats.total_scans }}</strong></div>
+            <div class="stat-l">Total Scans Indexed</div>
+        </div>
+        <div class="stat" onclick="window.location.href='/reports'" style="cursor:pointer; transition:background 0.2s;">
+            <div class="stat-n"><strong style="color:var(--red);">{{ stats.high_risks }}</strong></div>
+            <div class="stat-l">Critical & High Findings</div>
+        </div>
+        <div class="stat">
+            <div class="stat-n"><strong style="color:var(--text);">{{ (100 - ((stats.high_risks * 10) + (stats.med_risks * 3)) / (stats.total_scans or 1))|round|int }}%</strong></div>
+            <div class="stat-l">Security Posture Score</div>
+        </div>
+    </div>
+
+    <!-- Charts Row 1 -->
+    <div class="grid-cols-2" style="margin-bottom: 24px;">
+        <div class="panel">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 16px; border-bottom: 1px solid var(--border2); padding-bottom: 12px;">
+                <div style="font-size:12px; font-weight:600;"><i class="fas fa-chart-line"></i> SCAN TREND</div>
+                <div style="font-family:var(--mono); font-size:10px; color:var(--text3);">{{ stats.trend_labels|length }} points</div>
+            </div>
+            <div style="height: 300px;"><canvas id="trendChart"></canvas></div>
+        </div>
+        <div class="panel">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 16px; border-bottom: 1px solid var(--border2); padding-bottom: 12px;">
+                <div style="font-size:12px; font-weight:600;"><i class="fas fa-chart-pie"></i> RISK DISTRIBUTION</div>
+                <div style="font-family:var(--mono); font-size:10px; color:var(--text3);">doughnut</div>
+            </div>
+            <div style="height: 300px;"><canvas id="riskChart"></canvas></div>
+        </div>
+    </div>
+
+    <!-- Top Findings -->
+    <div class="panel" style="margin-bottom: 24px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 16px; border-bottom: 1px solid var(--border2); padding-bottom: 12px;">
+            <div style="font-size:12px; font-weight:600;"><i class="fas fa-chart-bar"></i> TOP FINDINGS</div>
+            <div style="font-family:var(--mono); font-size:10px; color:var(--text3);">bar</div>
+        </div>
+        <div style="height: 240px;"><canvas id="findingChart"></canvas></div>
+    </div>
+
+    <!-- Activity Heatmap -->
+    <div class="panel" style="margin-bottom: 32px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 16px;">
+            <div style="font-size:12px; font-weight:600;"><i class="fas fa-fire"></i> THREAT HEATMAP</div>
+            <div style="font-family:var(--mono); font-size:10px; color:var(--text3);">activity map</div>
+        </div>
+        
+        <div id="heatmap" style="display:grid; grid-template-columns: repeat(53, 1fr); gap: 3px; align-items:center;">
+            <!-- Filled by JS -->
+        </div>
+        <div style="margin-top:12px; font-size:11px; color:var(--text3); font-family:var(--mono);">Derived from trend datasets. Displays daily scan & threat activity intensity.</div>
+    </div>
+
+    <!-- Correlation Engine -->
+    <section class="modules-section" style="padding: 40px; margin-bottom: 40px; background:var(--bg2); border: 1px solid var(--border2); border-radius:var(--radius);">
+        <div style="margin-bottom: 24px;">
+            <div style="font-size:10px; font-weight:600; padding:4px 8px; border-radius:4px; font-family:var(--mono); background:var(--accent-light); color:var(--accent2); display:inline-block; margin-bottom:8px;"><i class="fas fa-bolt"></i> CORRELATION ENGINE</div>
+            <h2 style="font-size:24px; font-weight:600; margin-bottom:8px;">Map the attack surface</h2>
+            <p style="font-size:14px; color:var(--text2); max-width:600px;">Select a Network scan (infrastructure context) and a Web scan (application context) to generate a prioritized attack path graph.</p>
+        </div>
+
+        <form action="/analytics" method="GET">
+            <div class="grid-cols-3" style="gap:20px; align-items:end;">
+                <div class="form-group" style="margin-bottom:0;">
+                    <label class="form-label">Infrastructure Scan</label>
+                    <select name="nmap_id" class="form-select" required>
+                        <option value="">Select Network Scan...</option>
+                        {% for r in reports if r.tool == 'NETWORK' %}
+                        <option value="{{ r.id }}" {% if nmap_id == r.id %}selected{% endif %}>{{ r.target }} ({{ r.time }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group" style="margin-bottom:0;">
+                    <label class="form-label">Web Vulnerability Scan</label>
+                    <select name="zap_id" class="form-select" required>
+                        <option value="">Select Web Scan...</option>
+                        {% for r in reports if r.tool == 'WEBAPP' %}
+                        <option value="{{ r.id }}" {% if zap_id == r.id %}selected{% endif %}>{{ r.target }} ({{ r.time }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <button type="submit" class="btn-lg" style="width:100%; height:42px; justify-content:center;"><i class="fas fa-bolt"></i> Generate Correlation</button>
+                </div>
+            </div>
+        </form>
+    </section>
+
+    {% if analysis %}
+    <div class="grid-cols-3" style="gap:24px; margin-bottom: 40px;">
+        <div class="panel" style="grid-column: span 1;">
+            <div style="font-size:12px; font-weight:600; margin-bottom: 16px; border-bottom: 1px solid var(--border2); padding-bottom: 12px;"><i class="fas fa-bolt" style="color:var(--amber);"></i> PRIORITIZATION</div>
+            <div style="max-height: 480px; overflow:auto;">
+                {% for f in analysis.findings %}
+                <div style="padding: 12px; margin-bottom: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm);">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
+                        <div style="font-weight:600; font-size:13px; color:var(--text);">{{ f.name }}</div>
+                        <span style="font-size:10px; font-weight:600; font-family:var(--mono); padding:2px 6px; border-radius:4px; 
+                            background:{% if f.risk == 'Critical' %}var(--red-light){% elif f.risk == 'High' %}var(--red-light){% elif f.risk == 'Medium' %}var(--amber-light){% else %}var(--blue-light){% endif %};
+                            color:{% if f.risk == 'Critical' or f.risk == 'High' %}var(--red){% elif f.risk == 'Medium' %}var(--amber){% else %}var(--blue){% endif %};">
+                            {{ f.score }}
+                        </span>
+                    </div>
+                    <div style="font-family:var(--mono); font-size:11px; color:var(--text3);">risk: {{ f.risk }} &middot; vector: {{ f.port or 'web/api' }}</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="panel" style="grid-column: span 2; display:flex; flex-direction:column;">
+            <div style="font-size:12px; font-weight:600; margin-bottom: 16px; border-bottom: 1px solid var(--border2); padding-bottom: 12px;"><i class="fas fa-diagram-project" style="color:var(--accent2);"></i> MAPPED ATTACK SURFACE</div>
+            <div style="flex:1; border: 1px solid var(--border); border-radius: var(--radius-sm); overflow:auto; background: var(--bg); padding: 20px; min-height: 440px; display:flex; justify-content:center; align-items:center;">
+                <div class="mermaid">{{ analysis.mermaid_graph }}</div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Recent Sessions -->
+    <div class="panel" style="padding:0; overflow:hidden;">
+        <div style="padding: 16px; border-bottom:1px solid var(--border2); display:flex; align-items:center; justify-content:space-between;">
+            <div style="font-size:12px; font-weight:600;"><i class="fas fa-list"></i> RECENT SESSIONS</div>
+            <a href="/reports" class="btn-sm"><i class="fas fa-history"></i> Full History</a>
+        </div>
+        <div style="overflow:auto;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Engine</th>
+                        <th>Target</th>
+                        <th>Summary</th>
+                        <th>Time</th>
+                        <th style="text-align:right;">Report</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in stats.recent_scans %}
+                    <tr>
+                        <td>
+                            <span style="font-size:10px; font-weight:600; padding:3px 8px; border-radius:4px; font-family:var(--mono); text-transform:uppercase; background:var(--accent-light); color:var(--accent2);">
+                                <i class="fas fa-{{ 'network-wired' if r.tool == 'NETWORK' else 'spider' }}"></i>
+                                {{ 'NETWORK' if r.tool == 'NETWORK' else 'WEB' }}
+                            </span>
+                        </td>
+                        <td style="font-family:var(--mono); font-size:12px; font-weight:500;">{{ r.target }}</td>
+                        <td>
+                            {% if r.tool == 'WEBAPP' %}
+                            <span style="font-size:10px; font-weight:600; padding:2px 6px; border-radius:4px; font-family:var(--mono); background:rgba(220,38,38,0.1); color:var(--red);">{{ r.high|default(0) }} HIGH</span>
+                            {% else %}
+                            <span style="font-size:11px; font-family:var(--mono); color:var(--text3);">service discovery</span>
+                            {% endif %}
+                        </td>
+                        <td style="font-family:var(--mono); font-size:11px; color:var(--text3);">{{ r.time }}</td>
+                        <td style="text-align:right;"><a href="/report/{{ r.id }}" target="_blank" class="btn-sm" style="padding:4px 8px;"><i class="fas fa-arrow-up-right-from-square"></i></a></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    Chart.defaults.color = 'var(--text2)';
+    Chart.defaults.borderColor = 'var(--border2)';
+    Chart.defaults.font.family = "'Inter', sans-serif";
+
+    const trendCtx = document.getElementById('trendChart').getContext('2d');
+    const trendGrad = trendCtx.createLinearGradient(0, 0, 0, 280);
+    trendGrad.addColorStop(0, 'rgba(99, 102, 241, 0.2)');
+    trendGrad.addColorStop(1, 'rgba(99, 102, 241, 0.0)');
+
+    new Chart(trendCtx, {
+        type: 'line',
+        data: {
+            labels: {{ stats.trend_labels | tojson }},
+            datasets: [{
+                label: 'Scans',
+                data: {{ stats.trend_data | tojson }},
+                borderColor: '#6366f1',
+                backgroundColor: trendGrad,
+                fill: true,
+                tension: 0.35,
+                pointRadius: 3,
+                pointHoverRadius: 6,
+                pointBackgroundColor: '#1a1aff',
+                borderWidth: 2
+            }]
+        },
+        options: {
+            maintainAspectRatio: false,
+            animation: { duration: 900, easing: 'easeOutCubic' },
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, grid: { borderDash: [4, 4] } },
+                x: { grid: { display: false } }
+            }
+        }
+    });
+
+    new Chart(document.getElementById('riskChart'), {
+        type: 'doughnut',
+        data: {
+            labels: ['Critical / High', 'Medium', 'Low'],
+            datasets: [{
+                data: [{{ stats.high_risks|tojson }}, {{ stats.med_risks|tojson }}, {{ stats.low_risks|tojson }}],
+                backgroundColor: ['#dc2626', '#d97706', '#16a34a'],
+                borderWidth: 0,
+                hoverOffset: 4
+            }]
+        },
+        options: {
+            maintainAspectRatio: false,
+            cutout: '72%',
+            animation: { duration: 900, easing: 'easeOutCubic' },
+            plugins: { legend: { position: 'bottom', labels: { padding: 14, usePointStyle: true, font: { size: 11 } } } }
+        }
+    });
+
+    new Chart(document.getElementById('findingChart'), {
+        type: 'bar',
+        data: {
+            labels: {{ stats.top_findings.keys()|list|tojson }},
+            datasets: [{
+                label: 'Occurrences',
+                data: {{ stats.top_findings.values()|list|tojson }},
+                backgroundColor: '#6366f1',
+                borderRadius: 4,
+                barThickness: 16
+            }]
+        },
+        options: {
+            maintainAspectRatio: false,
+            indexAxis: 'y',
+            animation: { duration: 900, easing: 'easeOutCubic' },
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { beginAtZero: true },
+                y: { grid: { display: false }, ticks: { font: { size: 11 } } }
+            }
+        }
+    });
+
+    // Heatmap
+    (function buildHeatmap(){
+        const host = document.getElementById('heatmap');
+        if (!host) return;
+        const labels = {{ stats.trend_labels | tojson }};
+        const data = {{ stats.trend_data | tojson }};
+        const points = [];
+        for (let i=0; i<labels.length; i++){
+            const t = Date.parse(labels[i]);
+            points.push({ t: Number.isFinite(t) ? t : NaN, v: Number(data[i] || 0) });
+        }
+
+        const cells = 53 * 7;
+        const today = new Date();
+        const end = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
+        const dayMs = 24*60*60*1000;
+
+        const map = new Map();
+        points.forEach(p => {
+            if (!Number.isFinite(p.t)) return;
+            const key = Math.floor(p.t / dayMs);
+            map.set(key, (map.get(key) || 0) + p.v);
+        });
+
+        let max = 0;
+        for (const v of map.values()) max = Math.max(max, v);
+        max = max || 1;
+
+        host.innerHTML = '';
+        for (let i = cells - 1; i >= 0; i--) {
+            const dayKey = Math.floor((end - i*dayMs) / dayMs);
+            const v = map.get(dayKey) || 0;
+            const p = v / max;
+            const el = document.createElement('div');
+            el.title = `activity=${v}`;
+            el.style.width = '100%';
+            el.style.aspectRatio = '1 / 1';
+            el.style.borderRadius = '3px';
+            el.style.border = '1px solid var(--border)';
+            
+            let bg;
+            if (p === 0) bg = 'var(--bg2)';
+            else if (p < 0.3) bg = 'rgba(99,102,241,0.2)';
+            else if (p < 0.6) bg = 'rgba(99,102,241,0.5)';
+            else if (p < 0.9) bg = 'rgba(99,102,241,0.8)';
+            else bg = '#1a1aff';
+            
+            el.style.background = bg;
+            host.appendChild(el);
+        }
+    })();
+</script>
+{% endblock %}

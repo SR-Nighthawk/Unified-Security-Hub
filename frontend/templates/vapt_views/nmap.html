@@ -1,0 +1,466 @@
+{% extends "layout.html" %}
+{% block title %}Network Scanner | Unified Security Hub{% endblock %}
+
+{% block content %}
+<div class="page-container reveal">
+    <div class="page-header" style="display:flex; justify-content:space-between; align-items:flex-end;">
+        <div>
+            <div class="eyebrow" style="margin-bottom:8px;">VAPT Suite</div>
+            <h1 class="page-title">Network Scanner</h1>
+            <p class="page-subtitle">Network execution profiles with structured output, port discovery log, and persisted reports.</p>
+        </div>
+        <div style="display:flex; gap:12px;">
+            <a href="/reports" class="btn-lg-out"><i class="fas fa-file-lines"></i> Reports</a>
+        </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="panel" style="margin-bottom: 24px;">
+        <div class="grid-cols-3" style="align-items:end; gap: 16px;">
+            <div class="form-group" style="margin-bottom:0;">
+                <label class="form-label">Target IP / Hostname</label>
+                <input type="text" id="targetInput" class="form-input" value="example.com" placeholder="192.168.1.1 or example.com" />
+                <div id="targetHint" style="display:none; font-size:11px; color:var(--text3); margin-top:6px; font-family:var(--mono);">
+                    Sanitized: <strong id="resolvedTarget" style="color:var(--accent2);"></strong>
+                </div>
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+                <label class="form-label">Scan Profile</label>
+                <select id="profileInput" class="form-select">
+                    <option>Quick Scan</option>
+                    <option>Regular Scan</option>
+                    <option>Intense Scan</option>
+                </select>
+            </div>
+            <div>
+                <button id="startBtn" class="btn-lg" style="width: 100%; height: 42px; justify-content:center;"><i class="fas fa-play"></i> Launch Scan</button>
+            </div>
+        </div>
+
+        <div id="scanError" style="display:none; margin-top: 16px; padding: 12px 16px; background: rgba(220,38,38,0.06); border: 1px solid rgba(220,38,38,0.15); border-radius: 8px; color: var(--red); font-size: 13px; font-family: var(--mono);">
+            <i class="fas fa-triangle-exclamation"></i> <span id="scanErrorText"></span>
+        </div>
+
+        <div style="margin-top: 20px;">
+            <div id="progressContainer" class="bar" style="display:none;">
+                <div id="progressBar" class="bar-fill fill-b" style="width:0%;"></div>
+            </div>
+            <div id="progressText" style="display:none; font-family:var(--mono); font-size:11px; color:var(--text3); text-align:right; margin-top:8px;">Scan in progress: 0%</div>
+        </div>
+
+        <div id="postScanActions" style="display:none; margin-top: 20px; padding: 16px; background: rgba(99,102,241,0.04); border: 1px dashed rgba(99,102,241,0.2); border-radius: var(--radius-sm);">
+            <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap;">
+                <div>
+                    <div style="font-family:var(--mono); font-size:11px; font-weight:600; color:var(--accent2); text-transform:uppercase; letter-spacing:0.05em;"><i class="fas fa-check-double"></i> Scan Complete</div>
+                    <div style="font-size:13px; color:var(--text2); margin-top:4px;">Results persisted to reports database.</div>
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <a id="viewReportBtn" href="#" class="btn-sm"><i class="fas fa-file-alt"></i> Report</a>
+                    <button id="aiSummaryBtn" class="btn-sm btn-dark"><i class="fas fa-brain"></i> AI Summary</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-bar" style="border: 1px solid var(--border2); border-radius: var(--radius); margin-bottom: 24px; overflow: hidden;">
+        <div class="stat">
+            <div class="stat-n"><strong id="mHosts">-</strong></div>
+            <div class="stat-l">Hosts Up</div>
+        </div>
+        <div class="stat">
+            <div class="stat-n"><strong id="mPorts">-</strong></div>
+            <div class="stat-l">Open Ports</div>
+        </div>
+        <div class="stat">
+            <div class="stat-n"><strong id="mFiltered" style="color:var(--amber);">-</strong></div>
+            <div class="stat-l">Filtered</div>
+        </div>
+        <div class="stat">
+            <div class="stat-n"><strong id="mTime" style="color:var(--text2);">-</strong></div>
+            <div class="stat-l">Duration</div>
+        </div>
+    </div>
+
+    <div class="grid-cols-2" style="margin-bottom: 24px;">
+        <div class="panel">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 12px;">
+                <div style="font-size:12px; font-weight:600;"><i class="fas fa-chart-pie"></i> Service Distribution</div>
+                <div style="font-family:var(--mono); font-size:10px; color:var(--text3);">chart.js</div>
+            </div>
+            <div style="height: 280px; display:flex; justify-content:center; align-items:center;">
+                <canvas id="nmapChart"></canvas>
+            </div>
+        </div>
+
+        <div class="panel" style="padding:0; overflow:hidden; display:flex; flex-direction:column;">
+            <div style="padding: 16px; border-bottom: 1px solid var(--border2); display:flex; justify-content:space-between; align-items:center;">
+                <div style="font-size:12px; font-weight:600;"><i class="fas fa-list"></i> Discovery Log</div>
+                <div style="font-family:var(--mono); font-size:10px; color:var(--text3);">ports</div>
+            </div>
+            <div style="flex:1; overflow:auto; max-height:310px;">
+                <table class="data-table" id="portsTable">
+                    <thead>
+                        <tr>
+                            <th>Port</th>
+                            <th>Service</th>
+                            <th>Version</th>
+                            <th>State</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td colspan="4" style="text-align:center; padding:40px 16px; color:var(--text3); font-family:var(--mono);">No active scan data</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Terminal & Graph -->
+    <div class="panel" style="margin-bottom: 24px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 12px;">
+            <div style="font-size:12px; font-weight:600;"><i class="fas fa-terminal"></i> Scan Stream</div>
+            <div style="font-family:var(--mono); font-size:10px; color:var(--text3);">live logs</div>
+        </div>
+        <div class="terminal-log" id="nmap-terminal">
+            <span class="log-info">&gt; Engine ready. Provide target parameters.</span>
+            <span>&gt; _<span style="animation: blink 1s step-end infinite;">█</span></span>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 12px;">
+            <div style="font-size:12px; font-weight:600;"><i class="fas fa-diagram-project"></i> Live Port Graph</div>
+            <div style="font-family:var(--mono); font-size:10px; color:var(--text3);">d3-force</div>
+        </div>
+        <div style="background: var(--bg); border: 1px solid var(--border2); border-radius: var(--radius-sm); overflow:hidden;">
+            <svg id="portGraph" width="100%" height="260" viewBox="0 0 1200 260" preserveAspectRatio="none" style="display:block;"></svg>
+        </div>
+        <div style="font-size:11px; color:var(--text3); margin-top:8px;">Ports are visualized when scan results render.</div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let chart = null;
+    let currentReportId = null;
+    const term = document.getElementById('nmap-terminal');
+
+    function termLog(msg, kind='info') {
+        if (!term) return;
+        const d = new Date();
+        const ts = `${String(d.getUTCHours()).padStart(2,'0')}:${String(d.getUTCMinutes()).padStart(2,'0')}:${String(d.getUTCSeconds()).padStart(2,'0')}Z`;
+        const line = document.createElement('span');
+        
+        let cls = 'log-info';
+        if (kind === 'error') cls = 'log-error';
+        else if (kind === 'warn') cls = 'log-warn';
+        else if (kind === 'success') cls = 'log-success';
+        
+        line.className = cls;
+        line.textContent = `> [${ts}] ${msg}`;
+        term.appendChild(line);
+        term.scrollTop = term.scrollHeight;
+    }
+
+    function extractHost(raw) {
+        let t = raw.trim();
+        if (!t) return '';
+        if (/^https?:\/\//i.test(t)) {
+            try {
+                const u = new URL(t);
+                return u.hostname;
+            } catch (_) {
+                return t.replace(/^https?:\/\//i, '').split('/')[0].split(':')[0];
+            }
+        }
+        if (!t.includes('/') && t.includes(':')) return t.split(':')[0];
+        return t;
+    }
+
+    document.getElementById('targetInput').addEventListener('input', (e) => {
+        const raw = e.target.value;
+        const host = extractHost(raw);
+        const hint = document.getElementById('targetHint');
+        const resolved = document.getElementById('resolvedTarget');
+        if (host && host !== raw.trim()) {
+            resolved.textContent = host;
+            hint.style.display = 'block';
+        } else {
+            hint.style.display = 'none';
+        }
+    });
+
+    document.getElementById('startBtn').onclick = async () => {
+        const target = document.getElementById('targetInput').value.trim();
+        const profile = document.getElementById('profileInput').value;
+        if (!target) return showError("Please enter a target IP or hostname.");
+
+        const btn = document.getElementById('startBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Running';
+
+        hideError();
+        document.getElementById('mHosts').innerText = '-';
+        document.getElementById('mPorts').innerText = '-';
+        document.getElementById('mFiltered').innerText = '-';
+        document.getElementById('mTime').innerText = '-';
+        document.getElementById('postScanActions').style.display = 'none';
+        document.querySelector('#portsTable tbody').innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 40px 16px; color: var(--text3); font-family: var(--mono);">Initializing scan engine...</td></tr>';
+        termLog(`Launch requested: ${extractHost(target)} (${profile})`, 'info');
+
+        try {
+            const res = await fetch('/api/network/scan', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ target, scan_type: profile })
+            });
+            const data = await res.json();
+            if (data.success) {
+                termLog(`Task accepted: ${data.task_id}`, 'success');
+                pollTask(data.task_id);
+            } else {
+                showError(data.error || "Failed to start scan.");
+                termLog(`Start failed: ${data.error || 'unknown error'}`, 'error');
+                finishUI(false);
+            }
+        } catch (err) {
+            showError("Network error — could not reach the server.");
+            termLog(`Network error: ${err.message || err}`, 'error');
+            finishUI(false);
+        }
+    };
+
+    function showError(msg) {
+        const el = document.getElementById('scanError');
+        document.getElementById('scanErrorText').textContent = msg;
+        el.style.display = 'block';
+    }
+    function hideError() {
+        document.getElementById('scanError').style.display = 'none';
+    }
+
+    async function pollTask(taskId) {
+        const prog = document.getElementById('progressContainer');
+        const bar = document.getElementById('progressBar');
+        const text = document.getElementById('progressText');
+        prog.style.display = 'block';
+        text.style.display = 'block';
+
+        const interval = setInterval(async () => {
+            try {
+                const res = await fetch(`/api/task-status/${taskId}`);
+                const responseData = await res.json();
+                const task = responseData.data;
+
+                bar.style.width = task.progress + '%';
+                text.innerText = `Scan in progress: ${Math.round(task.progress)}%`;
+                termLog(`progress=${Math.round(task.progress)}% status=${task.status}`);
+
+                if (task.status === 'completed') {
+                    clearInterval(interval);
+                    if (task.result) {
+                        currentReportId = task.result.report_id;
+                        renderResults(task.result);
+                        termLog(`completed report_id=${task.result.report_id}`, 'success');
+                        finishUI(true);
+                    }
+                } else if (task.status === 'failed') {
+                    clearInterval(interval);
+                    showError("Scan failed: " + (task.error || 'Unknown error'));
+                    termLog(`failed: ${task.error || 'Unknown error'}`, 'error');
+                    finishUI(false);
+                }
+            } catch (err) {
+                termLog(`polling error: ${err.message || err}`, 'warn');
+            }
+        }, 1500);
+    }
+
+    function renderResults(res) {
+        document.getElementById('mHosts').innerText = res.hosts || 0;
+        document.getElementById('mPorts').innerText = res.open_ports || 0;
+        document.getElementById('mFiltered').innerText = res.filtered_ports || 0;
+        document.getElementById('mTime').innerText = res.duration || '0s';
+
+        const tbody = document.querySelector('#portsTable tbody');
+
+        if (!res.services || res.services.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="4" style="text-align: center; padding: 40px 16px; color: var(--text2);">
+                        <i class="fas fa-info-circle"></i> No open ports were found on the specified target.
+                    </td>
+                </tr>`;
+            if (chart) chart.destroy();
+            return;
+        }
+
+        tbody.innerHTML = res.services.map(s => `
+            <tr>
+                <td style="font-family: var(--mono); font-weight:600;">${s.port}/${s.protocol}</td>
+                <td style="font-weight:500;">${s.service}</td>
+                <td style="color: var(--text3); font-size:12px;">${s.version || '-'}</td>
+                <td><span style="font-size:10px; font-weight:600; padding:3px 8px; border-radius:4px; font-family:var(--mono); background:rgba(22,163,74,0.1); color:var(--green);">${s.state}</span></td>
+            </tr>
+        `).join('');
+
+        updateChart(res.services);
+        updateGraph(res.services);
+        document.getElementById('viewReportBtn').href = `/report/${res.report_id}`;
+    }
+
+    function portRiskColor(port) {
+        const p = Number(port);
+        if (p === 3389) return '#dc2626';     // red
+        if (p === 22) return '#d97706';       // amber 
+        if (p === 80 || p === 443) return '#16a34a'; // green
+        return '#6366f1';                     // blue
+    }
+
+    function updateGraph(services) {
+        const svg = document.getElementById('portGraph');
+        if (!svg || !window.d3) return;
+
+        const w = 1200, h = 260;
+        const hostNodes = Array.from(new Set((services || []).map(s => s.host))).slice(0, 8);
+        const portNodes = (services || []).filter(s => s.state === 'open').slice(0, 48).map((s, i) => ({
+            id: `p-${s.host}-${s.port}-${i}`,
+            port: s.port,
+            host: s.host,
+            service: s.service
+        }));
+
+        const nodes = [
+            ...hostNodes.map((host) => ({ id: `h-${host}`, kind: 'host', label: host })),
+            ...portNodes.map((p) => ({ id: p.id, kind: 'port', label: `${p.port}/${p.service}`, port: p.port, host: p.host }))
+        ];
+
+        const links = portNodes.map((p) => ({ source: `h-${p.host}`, target: p.id }));
+
+        const sel = window.d3.select(svg);
+        sel.selectAll("*").remove();
+
+        const g = sel.append("g");
+
+        const link = g.append("g")
+            .selectAll("line")
+            .data(links)
+            .enter()
+            .append("line")
+            .attr("stroke", "var(--border2)")
+            .attr("stroke-width", 1);
+
+        const node = g.append("g")
+            .selectAll("circle")
+            .data(nodes)
+            .enter()
+            .append("circle")
+            .attr("r", (d) => d.kind === 'host' ? 10 : 6)
+            .attr("fill", (d) => {
+                if (d.kind === 'host') return "var(--text)";
+                return portRiskColor(d.port);
+            });
+
+        const labels = g.append("g")
+            .selectAll("text")
+            .data(nodes)
+            .enter()
+            .append("text")
+            .text((d) => d.kind === 'host' ? d.label : String(d.port))
+            .attr("font-family", "var(--mono)")
+            .attr("font-size", (d) => d.kind === 'host' ? 11 : 10)
+            .attr("fill", "var(--text2)")
+            .attr("dy", (d) => d.kind === 'host' ? -14 : -10);
+
+        const sim = window.d3.forceSimulation(nodes)
+            .force("link", window.d3.forceLink(links).id(d => d.id).distance(55).strength(0.9))
+            .force("charge", window.d3.forceManyBody().strength(-110))
+            .force("center", window.d3.forceCenter(w / 2, h / 2))
+            .force("collision", window.d3.forceCollide().radius(d => d.kind === 'host' ? 18 : 12))
+            .alpha(1)
+            .alphaDecay(0.06)
+            .on("tick", () => {
+                link
+                    .attr("x1", d => d.source.x)
+                    .attr("y1", d => d.source.y)
+                    .attr("x2", d => d.target.x)
+                    .attr("y2", d => d.target.y);
+                node
+                    .attr("cx", d => d.x)
+                    .attr("cy", d => d.y);
+                labels
+                    .attr("x", d => d.x)
+                    .attr("y", d => d.y);
+            });
+
+        window.setTimeout(() => sim.stop(), 2400);
+    }
+
+    function updateChart(services) {
+        const counts = {};
+        services.forEach(s => counts[s.service] = (counts[s.service] || 0) + 1);
+
+        if (chart) chart.destroy();
+
+        const ctx = document.getElementById('nmapChart').getContext('2d');
+        chart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: Object.keys(counts),
+                datasets: [{
+                    data: Object.values(counts),
+                    backgroundColor: ['#6366f1', '#16a34a', '#a855f7', '#d97706', '#dc2626', '#06b6d4'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                cutout: '75%',
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { padding: 20, usePointStyle: true, font: { size: 11, family: 'Inter' } }
+                    }
+                }
+            }
+        });
+    }
+
+    function finishUI(success) {
+        document.getElementById('startBtn').disabled = false;
+        document.getElementById('startBtn').innerHTML = '<i class="fas fa-play"></i> Launch Scan';
+        document.getElementById('progressContainer').style.display = 'none';
+        document.getElementById('progressText').style.display = 'none';
+        if (success) {
+            document.getElementById('postScanActions').style.display = 'block';
+        }
+    }
+
+    document.getElementById('aiSummaryBtn').onclick = async () => {
+        if (!currentReportId) return;
+        const btn = document.getElementById('aiSummaryBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing';
+
+        try {
+            const res = await fetch('/api/ai/summary', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ report_id: currentReportId, tool: 'NETWORK' })
+            });
+            const data = await res.json();
+            if (data.success) {
+                window.location.href = `/ai-chat?report_id=${currentReportId}&summary=true`;
+            } else {
+                alert("AI generation failed. Please check backend logs.");
+            }
+        } catch (e) { console.error(e); }
+
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-brain"></i> AI Summary';
+    };
+</script>
+{% endblock %}

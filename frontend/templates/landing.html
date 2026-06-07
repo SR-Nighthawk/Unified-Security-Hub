@@ -1,0 +1,42 @@
+{% extends "layout.html" %}
+{% block title %}SecHub - Corporate Security{% endblock %}
+
+{% block content %}
+<div class="reveal" style="text-align: center; max-width: 800px; margin: 60px auto;">
+    <div style="display:inline-block; padding:8px 16px; background:rgba(99,102,241,0.1); color:var(--accent2); border-radius:20px; font-size:12px; font-weight:600; margin-bottom:24px; font-family:var(--mono);">
+        <i class="fas fa-shield-alt"></i> Unified Security Operations
+    </div>
+    
+    <h1 style="font-size: 3rem; margin-bottom: 20px; font-weight: 800; letter-spacing: -0.02em;">
+        Automate your <span style="background: -webkit-linear-gradient(45deg, var(--accent1), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Threat Intelligence</span>.
+    </h1>
+    
+    <p style="font-size: 1.1rem; color: var(--text2); margin-bottom: 40px; line-height: 1.6;">
+        SecHub is the unified command center for corporate security teams. Integrate deep web crawling, advanced DAST web scanning, and AI-driven intelligence dossiers into one single platform.
+    </p>
+
+    <div style="display:flex; justify-content:center; gap:16px;">
+        <a href="/login" class="btn-lg"><i class="fas fa-rocket"></i> Get Started</a>
+        <a href="#about" class="btn-lg-out"><i class="fas fa-book"></i> Read Documentation</a>
+    </div>
+</div>
+
+<div class="grid-cols-2" id="about" style="gap:24px; margin-top:60px;">
+    <div class="panel" style="padding:40px;">
+        <div style="font-size:24px; color:var(--accent1); margin-bottom:16px;"><i class="fas fa-spider"></i></div>
+        <h3 style="margin-bottom:12px;">DAST & Dynamic Crawling</h3>
+        <p style="color:var(--text2); font-size:14px; line-height:1.6;">Deploy aggressive authenticated spidering algorithms against modern SPAs using our advanced web scanning engine integration.</p>
+    </div>
+    <div class="panel" style="padding:40px;">
+        <div style="font-size:24px; color:var(--accent1); margin-bottom:16px;"><i class="fas fa-user-secret"></i></div>
+        <h3 style="margin-bottom:12px;">Dark Web Reconnaissance</h3>
+        <p style="color:var(--text2); font-size:14px; line-height:1.6;">Monitor APT group infrastructure across the deep web using automated Tor network proxies and cryptographic proof-of-life image caching.</p>
+    </div>
+</div>
+
+<div class="panel" style="margin-top: 24px; text-align:center; padding:60px;">
+    <h2 style="margin-bottom: 16px;">Secure Your Infrastructure Today</h2>
+    <p style="color:var(--text2); margin-bottom: 24px;">Deploy SecHub to your security operations center.</p>
+    <a href="/login" class="btn-lg" style="margin:0 auto;"><i class="fas fa-user-plus"></i> Create Account</a>
+</div>
+{% endblock %}

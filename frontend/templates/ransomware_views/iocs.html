@@ -1,0 +1,114 @@
+{% extends "layout.html" %}
+{% block title %}Intelligence IoCs — Ransomware Intel{% endblock %}
+{% block content %}
+<div class="page-container">
+    <div class="page-header" style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:24px;">
+        <div>
+            <div style="font-size:12px; color:var(--accent2); letter-spacing:0.1em; text-transform:uppercase; font-weight:600; margin-bottom:8px;">Indicator Tracking</div>
+            <h2 class="page-title"><i class="fas fa-shield-alt" style="color:var(--text3); margin-right:8px;"></i> Intelligence IoCs</h2>
+            <div class="page-subtitle">Track hashes, IP addresses, and digital footprints extracted from attacker infrastructure.</div>
+        </div>
+        <a href="/ransomware" class="btn-sm"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+    </div>
+
+    <!-- Active IOC Groups -->
+    <h3 style="font-size:14px; font-weight:600; margin-bottom:16px;">Available Threat Group Feeds</h3>
+    <div id="iocs-loading" style="text-align:center; padding:48px; color:var(--text3);">Loading Indicator Feeds...</div>
+    <div id="iocs-grid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(300px, 1fr)); gap:16px; margin-bottom:32px;"></div>
+
+</div>
+
+<!-- DETAILS MODAL -->
+<div id="iocModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; align-items:center; justify-content:center; padding:24px; backdrop-filter:blur(4px);">
+    <div style="background:var(--bg); border:1px solid var(--border2); border-radius:12px; width:100%; max-width:800px; max-height:90vh; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 24px 48px rgba(0,0,0,0.5);">
+        
+        <!-- Header -->
+        <div style="padding:16px 24px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; background:var(--bg2);">
+            <div>
+                <h3 style="margin:0; font-size:20px; font-weight:600; display:flex; align-items:center; gap:8px;" id="ioc-m-name"></h3>
+            </div>
+            <button onclick="closeModal()" style="background:transparent; border:none; color:var(--text3); font-size:20px; cursor:pointer;"><i class="fas fa-times"></i></button>
+        </div>
+
+        <!-- Body -->
+        <div style="padding:24px; overflow-y:auto; flex:1;" id="ioc-m-body">
+            <!-- Payload Rendered Here -->
+        </div>
+    </div>
+</div>
+
+<script>
+async function loadIOCs() {
+    try {
+        const res = await fetch('/api/ransomware/ioc');
+        const data = await res.json();
+        
+        const grid = document.getElementById('iocs-grid');
+        document.getElementById('iocs-loading').style.display = 'none';
+
+        if (data && data.groups && data.groups.length > 0) {
+            grid.innerHTML = data.groups.map(g => {
+                let tags = '';
+                for (const [key, value] of Object.entries(g.ioc_types || {})) {
+                    tags += `<span class="chip" style="background:var(--border); font-family:var(--mono);">${key.toUpperCase()}: <strong style="color:var(--text);">${value}</strong></span>`;
+                }
+                
+                return `
+                <div class="panel" style="padding:16px; cursor:pointer; transition:transform 0.2s;" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'" onclick="showGroupIOCs('${g.group}')">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
+                        <h4 style="font-size:16px; font-weight:600; margin:0;"><i class="fas fa-user-secret" style="color:var(--accent2); margin-right:8px;"></i> ${g.group}</h4>
+                        <span class="chip chip-b">${Object.values(g.ioc_types || {}).reduce((a,b)=>a+b,0)} Total</span>
+                    </div>
+                    <div style="display:flex; flex-wrap:wrap; gap:6px;">
+                        ${tags || '<span style="color:var(--text3); font-size:11px;">No typological data mapped.</span>'}
+                    </div>
+                </div>`;
+            }).join('');
+        } else {
+            grid.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding:64px 0; color:var(--text2);">
+                <div style="font-size:32px; color:var(--border2); margin-bottom:16px;"><i class="fas fa-unlink"></i></div>
+                No IoCs extracted for the active tracking roster.
+            </div>`;
+        }
+    } catch(e) {
+        document.getElementById('iocs-loading').innerHTML = `<span style="color:var(--red);">Failed to fetch global IoC index.</span>`;
+    }
+}
+
+async function showGroupIOCs(group) {
+    document.getElementById('ioc-m-name').innerHTML = `<i class="fas fa-user-secret" style="color:var(--accent2); font-size:16px;"></i> Indicators for ${group}`;
+    const body = document.getElementById('ioc-m-body');
+    body.innerHTML = `<div style="text-align:center; padding:48px; color:var(--text3);"><i class="fas fa-spinner fa-spin fa-2x"></i></div>`;
+    document.getElementById('iocModal').style.display = 'flex';
+
+    try {
+        const res = await fetch(`/api/ransomware/ioc/${group}`);
+        const data = await res.json();
+        
+        if (data && data.length > 0) {
+            body.innerHTML = data.map(item => `
+                <div style="margin-bottom:12px; padding-bottom:12px; border-bottom:1px solid var(--border);">
+                    <div style="font-size:12px; margin-bottom:6px;">
+                        <span class="chip" style="background:var(--border);">${item.type.toUpperCase()}</span>
+                        <span class="chip chip-b" style="margin-left:4px;">${item.source || 'Intel'}</span>
+                    </div>
+                    <div style="font-family:var(--mono); color:var(--text); font-size:13px; background:var(--bg2); padding:8px; border-radius:4px; word-break:break-all; user-select:all;">
+                        ${item.ioc}
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            body.innerHTML = `<div style="text-align:center; padding:48px; color:var(--text2);">No specific indicators returned for this entity.</div>`;
+        }
+    } catch(e) {
+        body.innerHTML = `<div style="text-align:center; padding:48px; color:var(--red);">Failed to pull indicator manifest.</div>`;
+    }
+}
+
+function closeModal() {
+    document.getElementById('iocModal').style.display = 'none';
+}
+
+loadIOCs();
+</script>
+{% endblock %}

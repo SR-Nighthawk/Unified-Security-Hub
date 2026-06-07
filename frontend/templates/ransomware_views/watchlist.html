@@ -1,0 +1,127 @@
+{% extends "layout.html" %}
+{% block title %}Watchlist — Ransomware Intel{% endblock %}
+{% block content %}
+<div class="page-container">
+    <div class="page-header" style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:24px;">
+        <div>
+            <div style="font-size:12px; color:var(--accent2); letter-spacing:0.1em; text-transform:uppercase; font-weight:600; margin-bottom:8px;">Alerting</div>
+            <h2 class="page-title"><i class="fas fa-bell" style="color:var(--amber); margin-right:8px;"></i> Intelligence Watchlist</h2>
+            <div class="page-subtitle">Configure automated Telegram alerts based on sector, geography, or keyword matching strings.</div>
+        </div>
+        <a href="/ransomware" class="btn-sm"><i class="fas fa-arrow-left"></i> Dashboard</a>
+    </div>
+
+    <!-- Create Rule Form -->
+    <div class="panel" style="margin-bottom:32px;">
+        <h3 style="font-size:14px; font-weight:600; margin-bottom:16px;">Create New Alert Trigger</h3>
+        <div style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;">
+            <div style="flex:1; min-width:200px;">
+                <label class="form-label" for="w-name">Rule Name</label>
+                <input type="text" id="w-name" placeholder="e.g. Indian Finance Sector" class="form-input">
+            </div>
+            <div style="width:140px;">
+                <label class="form-label" for="w-sector">Victim Sector</label>
+                <input type="text" id="w-sector" placeholder="e.g. Finance" class="form-input">
+            </div>
+            <div style="width:100px;">
+                <label class="form-label" for="w-country">Country</label>
+                <input type="text" id="w-country" placeholder="e.g. IN" class="form-input" style="text-transform:uppercase;">
+            </div>
+            <div style="width:140px;">
+                <label class="form-label" for="w-group">Actor Group</label>
+                <input type="text" id="w-group" placeholder="e.g. lockbit3" class="form-input">
+            </div>
+            <div style="width:160px;">
+                <label class="form-label" for="w-keyword">Target Keyword</label>
+                <input type="text" id="w-keyword" placeholder="Regex/Match Name" class="form-input">
+            </div>
+            
+            <div style="display:flex; align-items:center; gap:8px; padding-bottom:10px;">
+                <input type="checkbox" id="w-tg" checked style="accent-color:var(--accent2); width:16px; height:16px;">
+                <label for="w-tg" style="font-size:12px; font-weight:500; cursor:pointer;"><i class="fab fa-telegram" style="color:#0088cc;"></i> Telegram</label>
+            </div>
+            
+            <button class="btn-sm btn-dark" style="margin-bottom:2px;" onclick="createRule()">
+                <i class="fas fa-plus"></i> Save Core Rule
+            </button>
+        </div>
+    </div>
+
+    <!-- Existing Rules -->
+    <h3 style="font-size:14px; font-weight:600; margin-bottom:16px;">Active Operational Monitors</h3>
+    <div class="table-wrapper">
+        <table class="data-table">
+            <thead>
+                <tr><th>Monitor Alias</th><th>Sector Logic</th><th>Geography</th><th>Actor Tracking</th><th>Keyword Bind</th><th>Integrations</th><th>Manage</th></tr>
+            </thead>
+            <tbody id="rules-body">
+                <tr><td colspan="7" style="text-align:center; padding:32px; color:var(--text3);">Loading operational watchlists...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+async function loadRules() {
+    try {
+        const res = await fetch('/api/ransomware/watchlist');
+        const rules = await res.json();
+        
+        const tbody = document.getElementById('rules-body');
+        if (rules && rules.length > 0) {
+            tbody.innerHTML = rules.map(r => `
+                <tr style="transition:background 0.2s;" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">
+                    <td style="font-weight:600; color:var(--text);"><i class="fas fa-wave-square" style="color:var(--green); margin-right:8px; font-size:12px;"></i> ${r.name}</td>
+                    <td><span class="chip" style="background:var(--border);">${r.filter_sector || 'Any'}</span></td>
+                    <td><span class="chip" style="background:var(--border);">${r.filter_country || 'Global'}</span></td>
+                    <td><span class="chip chip-b">${r.filter_group || 'All Actors'}</span></td>
+                    <td><span class="chip" style="color:var(--text2); border:1px solid var(--border2); background:transparent;">${r.filter_keyword ? '*'+r.filter_keyword+'*' : '—'}</span></td>
+                    <td>${r.alert_telegram ? '<i class="fab fa-telegram" style="color:#0088cc; font-size:16px;" title="Telegram Linked"></i>' : '<i class="fas fa-bell-slash" style="color:var(--text3);"></i>'}</td>
+                    <td><button class="btn-sm" style="color:var(--red); border-color:rgba(220,38,38,0.2);" onclick="deleteRule(${r.id})"><i class="fas fa-trash"></i></button></td>
+                </tr>`).join('');
+        } else {
+            tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:64px 0; color:var(--text2);">
+                <div style="font-size:32px; color:var(--border2); margin-bottom:16px;"><i class="fas fa-shield-alt"></i></div>
+                No active alert heuristics defined for this view.
+            </td></tr>`;
+        }
+    } catch(e) {
+        document.getElementById('rules-body').innerHTML = `<tr><td colspan="7" style="text-align:center; padding:32px; color:var(--red);">Failed to fetch watchlists definitions.</td></tr>`;
+    }
+}
+
+async function createRule() {
+    const btn = event.currentTarget;
+    btn.disabled = true;
+    try {
+        await fetch('/api/ransomware/watchlist', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                name: document.getElementById('w-name').value || "Unnamed Alert Rule",
+                filter_sector: document.getElementById('w-sector').value || null,
+                filter_country: document.getElementById('w-country').value || null,
+                filter_group: document.getElementById('w-group').value || null,
+                filter_keyword: document.getElementById('w-keyword').value || null,
+                alert_telegram: document.getElementById('w-tg').checked,
+            })
+        });
+        ['w-name','w-sector','w-country','w-group','w-keyword'].forEach(id => document.getElementById(id).value = '');
+        await loadRules();
+    } catch(e) {
+        console.error("Creation failed", e);
+    }
+    btn.disabled = false;
+}
+
+async function deleteRule(id) {
+    if(!confirm("Permenantly drop this monitoring rule?")) return;
+    try {
+        await fetch(`/api/ransomware/watchlist/${id}`, { method: 'DELETE' });
+        await loadRules();
+    } catch(e) { console.error("Deletion failed"); }
+}
+
+loadRules();
+</script>
+{% endblock %}

@@ -1,0 +1,279 @@
+{% extends "layout.html" %}
+{% set active_page = 'apt' %}
+{% block title %}{{ group.name }} — APT Dossier | Unified Security Hub{% endblock %}
+
+{% block content %}
+<div class="page-container reveal" style="padding-top: 60px;">
+
+    <!-- Page Header (with back button) -->
+    <div class="page-header" style="display:flex; justify-content:space-between; align-items:flex-end;">
+        <div>
+            <div class="eyebrow" style="margin-bottom:8px;">Threat Intelligence / Tracker</div>
+            <h1 class="page-title">{{ group.name }}</h1>
+            <div style="margin-top:12px; display:flex; gap:8px;">
+                <span style="font-size:10px; font-weight:600; padding:4px 8px; border-radius:4px; font-family:var(--mono); text-transform:uppercase; 
+                    {% if group.threat_level == 'HIGH' or group.threat_level == 'CRITICAL' %}background:rgba(220,38,38,0.1); color:var(--red);
+                    {% elif group.threat_level == 'MEDIUM' %}background:rgba(217,119,6,0.1); color:var(--amber);
+                    {% else %}background:rgba(99,102,241,0.1); color:var(--accent2);{% endif %}">
+                    <i class="fas fa-exclamation-triangle" style="margin-right:4px;"></i> {{ group.threat_level or 'MEDIUM' }}
+                </span>
+                {% if group.origin_country %}
+                <span style="font-size:10px; font-weight:600; padding:4px 8px; border-radius:4px; font-family:var(--mono); text-transform:uppercase; background:var(--bg2); color:var(--text2); border:1px solid var(--border);">
+                    <i class="fas fa-map-marker-alt" style="margin-right:4px;"></i> {{ group.origin_country }}
+                </span>
+                {% endif %}
+                <span class="status-pill"><span class="dot-live"></span> {{ group.links|length }} Infrastructure Nodes</span>
+            </div>
+        </div>
+        <div style="display: flex; gap: 12px; align-items: center;">
+            <a href="/apt" class="btn-sm" style="background:var(--bg2); color:var(--text2); border-color:var(--border);"><i class="fas fa-arrow-left"></i> Tracker</a>
+            <button id="crawlBtn" class="btn-lg" onclick="startCrawl()"><i class="fas fa-satellite-dish"></i> Live Crawl</button>
+        </div>
+    </div>
+
+    <!-- Status Bar -->
+    <div id="crawl-status" class="panel" style="display: none; margin-bottom: 24px; border: 1px solid var(--accent2); background: var(--accent-light); padding: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <i class="fas fa-satellite-dish" style="color:var(--accent2); animation: pulse 1.5s infinite;"></i>
+                <span id="crawl-msg" style="font-weight: 600; font-family: var(--mono); font-size: 13px; color: var(--accent2);">Initializing scan...</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Group Intelligence -->
+    <div class="panel" style="margin-bottom: 24px;">
+        {% if group.aliases_list %}
+        <div style="margin-bottom: 24px;">
+            <div style="font-size:12px; font-weight:600; color:var(--text2); margin-bottom:12px;">Known Aliases</div>
+            <div id="aliases-container" style="display: flex; flex-wrap: wrap; gap: 8px;">
+                {% for alias in group.aliases_list %}
+                <span style="font-size:11px; background:var(--bg2); color:var(--text2); padding:4px 10px; border-radius:6px; border: 1px solid var(--border);">{{ alias }}</span>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if group.description %}
+        <div id="description-container">
+            <div style="font-size:12px; font-weight:600; color:var(--text2); margin-bottom:12px;">Intelligence Summary</div>
+            <p style="font-size: 14px; color: var(--text); line-height: 1.6; max-width:900px;">{{ group.description }}</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Info Grid -->
+    <div class="grid-cols-3" style="gap:24px; margin-bottom: 24px;">
+        <!-- Target Industries -->
+        <div class="panel">
+            <div style="font-size:12px; font-weight:600; color:var(--text2); margin-bottom:16px; border-bottom: 1px solid var(--border2); padding-bottom: 12px;">
+                <i class="fas fa-industry" style="color:var(--amber); margin-right:6px;"></i> Target Industries
+            </div>
+            <div id="industries-container" style="display: flex; flex-wrap: wrap; gap: 8px;">
+                {% if group.industries_list %}
+                    {% for ind in group.industries_list %}
+                    <span style="font-size: 11px; background: var(--bg); color: var(--text2); padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border);">{{ ind }}</span>
+                    {% endfor %}
+                {% else %}
+                    <span style="font-size: 12px; color: var(--text3);">Not enriched yet — run a live crawl</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- MITRE ATT&CK Techniques -->
+        <div class="panel">
+            <div style="font-size:12px; font-weight:600; color:var(--text2); margin-bottom:16px; border-bottom: 1px solid var(--border2); padding-bottom: 12px;">
+                <i class="fas fa-shield-halved" style="color:var(--red); margin-right:6px;"></i> MITRE ATT&CK
+            </div>
+            <div id="techniques-container" style="display: flex; flex-wrap: wrap; gap: 8px;">
+                {% if group.techniques_list %}
+                    {% for tech in group.techniques_list %}
+                    <span style="font-size: 11px; background: rgba(220,38,38,0.1); color: var(--red); padding: 4px 10px; border-radius: 6px; font-family: var(--mono); font-weight:600;">{{ tech }}</span>
+                    {% endfor %}
+                {% else %}
+                    <span style="font-size: 12px; color: var(--text3);">Pending AI enrichment</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Tools Used -->
+        <div class="panel">
+            <div style="font-size:12px; font-weight:600; color:var(--text2); margin-bottom:16px; border-bottom: 1px solid var(--border2); padding-bottom: 12px;">
+                <i class="fas fa-wrench" style="color:var(--accent2); margin-right:6px;"></i> Known Tools
+            </div>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                {% if group.tools_list %}
+                    {% for tool in group.tools_list %}
+                    <span style="font-size: 11px; background: var(--accent-light); color: var(--accent2); padding: 4px 10px; border-radius: 6px; font-weight:600;">{{ tool }}</span>
+                    {% endfor %}
+                {% else %}
+                    <span style="font-size: 12px; color: var(--text3);">Pending enrichment</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Infrastructure Links Table -->
+    <div class="panel" style="padding: 0; overflow: hidden; margin-bottom: 24px;">
+        <div style="padding: 16px; border-bottom: 1px solid var(--border2); display: flex; justify-content: space-between; align-items: center;">
+            <div style="font-size: 12px; font-weight: 600;"><i class="fas fa-server" style="color: var(--green); margin-right:6px;"></i> Infrastructure Nodes</div>
+            <span style="font-size: 10px; color: var(--text3); font-family: var(--mono);">{{ group.links|length }} total nodes</span>
+        </div>
+        <div style="overflow-x: auto;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Status</th>
+                        <th>URL</th>
+                        <th>Type</th>
+                        <th>Response Time</th>
+                        <th>HTTP Code</th>
+                        <th>Last Seen</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for link in group.links %}
+                    <tr id="link-{{ link.id }}">
+                        <td>
+                            <span id="link-status-{{ link.id }}" style="display: flex; align-items: center; gap: 6px; font-size:10px; font-weight:600; padding:4px 8px; border-radius:4px; font-family:var(--mono); 
+                                {% if link.status == 'ACTIVE' %}background:rgba(22,163,74,0.1); color:var(--green);
+                                {% elif link.status == 'OFFLINE' %}background:rgba(220,38,38,0.1); color:var(--red);
+                                {% else %}background:var(--bg2); color:var(--text3); border:1px solid var(--border);{% endif %} width:fit-content;">
+                                <span style="width: 6px; height: 6px; border-radius: 50%; background: {% if link.status == 'ACTIVE' %}var(--green){% elif link.status == 'OFFLINE' %}var(--red){% else %}var(--text3){% endif %};"></span>
+                                <span class="status-text">{{ link.status or 'UNKNOWN' }}</span>
+                            </span>
+                        </td>
+                        <td style="font-family: var(--mono); font-size: 12px; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight:500;" title="{{ link.url }}">{{ link.url }}</td>
+                        <td><span style="font-size:10px; font-weight:600; padding:4px 8px; border-radius:4px; font-family:var(--mono); text-transform:uppercase; background:var(--bg2); color:var(--text2); border:1px solid var(--border);">{{ link.type or ('onion' if '.onion' in link.url else 'web') }}</span></td>
+                        <td style="font-family: var(--mono); font-size: 12px; color: var(--text3);">{{ '%.2f'|format(link.response_time) if link.response_time else '--' }}s</td>
+                        <td style="font-family: var(--mono); font-size: 12px;">
+                            {% if link.status_code %}
+                            <span style="font-weight:600; color: {{ 'var(--green)' if link.status_code == 200 else 'var(--amber)' }};">{{ link.status_code }}</span>
+                            {% else %}--{% endif %}
+                        </td>
+                        <td style="font-size: 12px; color: var(--text3);">{{ link.last_active.strftime('%Y-%m-%d %H:%M') if link.last_active else 'Never' }}</td>
+                        <td>
+                            {% if link.status == 'ACTIVE' %}
+                            <button onclick="event.stopPropagation(); window.open('{{ link.url }}', '_blank')" class="btn-sm" style="padding:4px 8px;"><i class="fas fa-external-link-alt"></i></button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" style="text-align:center; padding:40px; color:var(--text3);">
+                            <i class="fas fa-unlink" style="font-size:24px; margin-bottom:12px;"></i>
+                            <p style="font-family:var(--mono);">No infrastructure links recorded.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Status History Timeline -->
+    {% if group.timeline %}
+    <div class="panel" style="margin-bottom: 24px;">
+        <div style="font-size: 12px; font-weight: 600; margin-bottom: 16px; border-bottom: 1px solid var(--border2); padding-bottom: 12px;"><i class="fas fa-timeline" style="color: var(--accent2); margin-right:6px;"></i> Status History Timeline</div>
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+            {% for event in group.timeline %}
+            <div style="display: flex; align-items: center; gap: 16px; padding: 12px 16px; background: var(--bg); border-radius: var(--radius-sm); border: 1px solid var(--border);">
+                <span style="width: 8px; height: 8px; border-radius: 50%; background: {{ 'var(--green)' if event.status == 'ACTIVE' else 'var(--red)' }}; flex-shrink: 0;"></span>
+                <div style="flex: 1; display:flex; align-items:center; gap:12px;">
+                    <span style="font-size: 13px; font-weight: 600; color: var(--text);">{{ event.url_summary }}</span>
+                    <span style="font-size: 10px; font-family:var(--mono); font-weight:600; color: {{ 'var(--green)' if event.status == 'ACTIVE' else 'var(--red)' }};">{{ event.status }}</span>
+                </div>
+                <span style="font-size: 12px; color: var(--text3); font-family: var(--mono); white-space: nowrap;">{{ event.timestamp.strftime('%Y-%m-%d %H:%M') if event.timestamp else '' }}</span>
+                {% if event.response_time %}
+                <span style="font-size: 12px; color: var(--text3); font-family: var(--mono);">{{ '%.1f'|format(event.response_time) }}s</span>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+
+<!-- Screenshot Modal (Kept for compatibility, though currently unused in views, standardizing anyway) -->
+<div id="ss-modal" style="display: none; position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); padding: 2rem; cursor: pointer;" onclick="this.style.display='none'">
+    <div style="max-width: 900px; margin: auto; background: var(--surface); border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); box-shadow:0 10px 40px rgba(0,0,0,0.1); cursor: default;" onclick="event.stopPropagation()">
+        <div style="padding: 16px 20px; border-bottom: 1px solid var(--border2); display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="font-size: 12px; font-weight: 600;">Target Node Proof of Life</h3>
+            <button onclick="document.getElementById('ss-modal').style.display='none'" style="background: none; border: none; color: var(--text2); cursor: pointer;"><i class="fas fa-times"></i></button>
+        </div>
+        <div style="aspect-ratio: 16/9; background: var(--bg); display: flex; align-items: center; justify-content: center;">
+            <img id="ss-img" src="" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const groupId = {{ group.id }};
+
+    function showScreenshot(path) {
+        document.getElementById('ss-img').src = path;
+        document.getElementById('ss-modal').style.display = 'block';
+    }
+
+    function startCrawl() {
+        if (!confirm('Start live crawl for {{ group.name }}? Requires Tor Browser on port 9150 for .onion links.')) return;
+        const btn = document.getElementById('crawlBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Crawling...';
+        document.getElementById('crawl-status').style.display = 'flex';
+        socket.emit('start_apt_crawl', { group_id: groupId });
+    }
+
+    socket.on('apt_status', (data) => {
+        document.getElementById('crawl-msg').innerText = data.msg;
+        if (data.type === 'done') {
+            const btn = document.getElementById('crawlBtn');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-satellite-dish"></i> Live Crawl';
+            setTimeout(() => { document.getElementById('crawl-status').style.display = 'none'; }, 4000);
+        }
+    });
+
+    socket.on('group_update', (data) => {
+        if (data.aliases && data.aliases.length) {
+            let c = document.getElementById('aliases-container');
+            if (c) c.innerHTML = data.aliases.map(a => `<span style="font-size:11px; background:var(--bg2); color:var(--text2); padding:4px 10px; border-radius:6px; border: 1px solid var(--border);">${a}</span>`).join('');
+        }
+        if (data.industries && data.industries.length) {
+            let c = document.getElementById('industries-container');
+            if (c) c.innerHTML = data.industries.map(i => `<span style="font-size: 11px; background: var(--bg); color: var(--text2); padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border);">${i}</span>`).join('');
+        }
+        if (data.techniques && data.techniques.length) {
+            let c = document.getElementById('techniques-container');
+            if (c) c.innerHTML = data.techniques.map(t => `<span style="font-size: 11px; background: rgba(220,38,38,0.1); color: var(--red); padding: 4px 10px; border-radius: 6px; font-family: var(--mono); font-weight:600;">${t}</span>`).join('');
+        }
+        if (data.description) {
+            let c = document.getElementById('description-container');
+            if (c) c.querySelector('p').innerText = data.description;
+        }
+    });
+
+    socket.on('link_update', (data) => {
+        const statusEl = document.getElementById(`link-status-${data.link_id}`);
+        if (!statusEl) return;
+        const isOnline = data.status === 'ACTIVE';
+        
+        statusEl.style.background = isOnline ? 'rgba(22,163,74,0.1)' : 'rgba(220,38,38,0.1)';
+        statusEl.style.color = isOnline ? 'var(--green)' : 'var(--red)';
+        statusEl.style.border = 'none';
+
+        statusEl.innerHTML = `
+            <span style="width:6px;height:6px;border-radius:50%;background:${isOnline ? 'var(--green)' : 'var(--red)'};"></span>
+            <span class="status-text">${data.status}</span>
+        `;
+    });
+
+    socket.on('link_crawl_status', (data) => {
+        document.getElementById('crawl-msg').innerText = `Scanning node #${data.link_id}...`;
+    });
+</script>
+{% endblock %}

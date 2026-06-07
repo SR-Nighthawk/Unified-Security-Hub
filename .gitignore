@@ -1,0 +1,35 @@
+# ── Environment & Secrets ──
+.env
+
+# ── Python ──
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+venv/
+.venv/
+.pytest_cache/
+
+# ── Database ──
+database/*.db
+database/*.sqlite
+
+# ── Runtime Data (never commit) ──
+data/intel_vault.json
+backend/reports/
+backend/sessions/
+static/proof_*.png
+static/screenshots/
+frontend/static/reports/
+frontend/static/screenshots/
+
+# ── IDE / OS ──
+.vscode/
+.idea/
+*.swp
+Thumbs.db
+.DS_Store
+
+# ── Generated files ──
+*.pdf
+response.html

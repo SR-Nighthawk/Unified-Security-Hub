@@ -1,0 +1,28 @@
+# Render deployment configuration
+# https://render.com/docs/render-yaml
+
+services:
+  - type: web
+    name: unified-security-hub
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: SOCKETIO_ASYNC_MODE
+        value: eventlet
+      - key: SECRET_KEY
+        generateValue: true
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: NVIDIA_API_KEY
+        sync: false
+      - key: RANSOMWARE_LIVE_API_KEY
+        sync: false
+      - key: RANSOMWARE_LIVE_BASE_URL
+        value: https://api-pro.ransomware.live
+      - key: SHODAN_API_KEY
+        sync: false
+      - key: TOR_PROXY_HOST
+        value: "127.0.0.1"
+      - key: TOR_PROXY_PORT
+        value: "9150"
+    healthCheckPath: /

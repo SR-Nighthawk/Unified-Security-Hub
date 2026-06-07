@@ -1,0 +1,30 @@
+flask
+flask-socketio
+flask-login
+google-genai
+playwright
+reportlab
+requests
+python-dotenv
+eventlet
+gunicorn==21.2.0
+beautifulsoup4
+flask-sqlalchemy
+flask-migrate
+apscheduler
+sqlalchemy
+python-nmap
+python-owasp-zap-v2.4
+markdown
+pexpect
+# ── Advanced Pentest Libraries ──
+paramiko
+pyjwt
+jsbeautifier
+dnspython
+cryptography
+tldextract
+# ── Port-Specific Service Testing (optional) ──
+pymysql
+pymongo
+redis

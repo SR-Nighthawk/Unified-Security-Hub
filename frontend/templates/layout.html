@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+    <title>{% block title %}Unified Security Hub{% endblock %}</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.4/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    
+    <link rel="stylesheet" href="/static/styles.css">
+    <style>
+    /* User Dropdown */
+    .user-dropdown { position:relative; display:inline-block; }
+    .user-avatar {
+        width:34px; height:34px; border-radius:50%;
+        background:linear-gradient(135deg, var(--accent1), var(--accent2));
+        display:flex; align-items:center; justify-content:center;
+        font-weight:700; font-size:14px; color:#fff;
+        cursor:pointer; transition:box-shadow 0.2s;
+    }
+    .user-avatar:hover { box-shadow: 0 0 0 2px var(--accent1); }
+    .dropdown-panel {
+        display:none; position:absolute; top:calc(100% + 12px); right:0;
+        min-width:200px; background:var(--surface); border:1px solid var(--border2);
+        border-radius:var(--radius-sm); box-shadow:0 8px 24px rgba(0,0,0,0.12);
+        z-index:9999; overflow:hidden;
+    }
+    .dropdown-panel.open { display:block; }
+    .dd-header {
+        padding:14px 16px; border-bottom:1px solid var(--border);
+        font-size:12px; color:var(--text3); font-family:var(--mono);
+    }
+    .dd-header strong { display:block; color:var(--text); font-size:14px; margin-bottom:2px; }
+    .dd-link {
+        display:flex; align-items:center; gap:10px;
+        padding:10px 16px; font-size:13px; color:var(--text2);
+        text-decoration:none; transition:background 0.15s;
+    }
+    .dd-link:hover { background:var(--bg2); color:var(--text); }
+    .dd-link.danger { color:var(--red); }
+    .dd-link.danger:hover { background:rgba(220,38,38,0.05); }
+    /* Theme Toggle Button */
+    .theme-toggle {
+        width:34px; height:34px; border-radius:50%;
+        border:1px solid var(--border2); background:var(--bg2);
+        display:flex; align-items:center; justify-content:center;
+        cursor:pointer; font-size:15px; color:var(--text2);
+        transition:all 0.2s; flex-shrink:0;
+    }
+    .theme-toggle:hover { background:var(--border2); color:var(--text); transform:rotate(20deg); }
+    /* Pre-load flash prevention */
+    html.dark-preload { background:#0d0d10; }
+    html.dark-preload body { background:#0d0d10; color:#f0f0f5; }
+    </style>
+    {% block styles %}{% endblock %}
+    <!-- Theme pre-load: apply before render to prevent flash -->
+    <script>
+    (function(){
+        var t = localStorage.getItem('sechub-theme');
+        var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if(t === 'dark' || (!t && prefersDark)) document.documentElement.classList.add('dark-preload');
+    })();
+    </script>
+</head>
+<body>
+
+    <div id="cursor-glow"></div>
+    <div id="cursor-dot"></div>
+
+    <!-- NAV -->
+    <nav>
+      <a href="/" class="logo">
+        <div class="logo-mark">
+          <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M8 1.5L14 5V11L8 14.5L2 11V5L8 1.5Z" stroke="white" stroke-width="1.3" fill="none"/>
+            <circle cx="8" cy="8" r="2" fill="white"/>
+          </svg>
+        </div>
+        <span class="logo-name">Unified Security Hub</span>
+      </a>
+      <ul class="nav-links">
+        <li><a href="/">Platform</a></li>
+        <li><a href="/network-scanner">Network</a></li>
+        <li><a href="/web-scanner">Web</a></li>
+        <li><a href="/darkweb">Dark Web</a></li>
+        <li><a href="/ransomware">Ransomware</a></li>
+        <li><a href="/ai-chat">AI Chat</a></li>
+        <li><a href="/ai-pentest"><i class="fas fa-robot" style="font-size:11px;"></i> AI Pentest</a></li>
+        <li><a href="/reports">Reports</a></li>
+      </ul>
+      <div class="nav-r">
+        <div class="status-pill"><span class="dot-live"></span> Live</div>
+        <button class="theme-toggle" id="themeToggleBtn" title="Toggle light/dark theme" onclick="toggleTheme()"><i class="fas fa-moon" id="themeIcon"></i></button>
+        {% if current_user.is_authenticated %}
+        <div class="user-dropdown" id="userDropdownWrap">
+            <div class="user-avatar" id="userAvatarBtn" onclick="toggleDropdown()">{{ current_user.username[0].upper() }}</div>
+            <div class="dropdown-panel" id="userDropdownPanel">
+                <div class="dd-header">
+                    <strong>{{ current_user.username }}</strong>
+                    {{ current_user.email }}
+                </div>
+                <a href="/profile" class="dd-link"><i class="fas fa-user" style="width:14px;"></i> My Profile</a>
+                <a href="/reports" class="dd-link"><i class="fas fa-file-lines" style="width:14px;"></i> My Reports</a>
+                <a href="/logout" class="dd-link danger"><i class="fas fa-sign-out-alt" style="width:14px;"></i> Logout</a>
+            </div>
+        </div>
+        {% else %}
+        <a href="/login" class="btn-sm btn-dark"><i class="fas fa-user"></i> Login</a>
+        {% endif %}
+      </div>
+    </nav>
+
+    <!-- CONTENT -->
+    <main style="padding-top: 60px; min-height: calc(100vh - 180px);">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- FOOTER -->
+    <footer>
+      <div class="footer-top">
+        <div class="footer-brand">
+          <div class="footer-brand-name">
+            <div class="logo-mark" style="width:26px;height:26px;border-radius:6px">
+              <svg viewBox="0 0 16 16" fill="none" style="width:14px;height:14px"><path d="M8 1.5L14 5V11L8 14.5L2 11V5L8 1.5Z" stroke="white" stroke-width="1.3"/><circle cx="8" cy="8" r="1.8" fill="white"/></svg>
+            </div>
+            Unified Security Hub
+          </div>
+          <p>Purpose-built for security professionals who need comprehensive threat visibility across every attack vector — without the tool sprawl.</p>
+        </div>
+        <div>
+          <div class="fc-t">Platform</div>
+          <ul class="fl">
+            <li><a href="/network-scanner">Network scanner</a></li>
+            <li><a href="/web-scanner">Web scanner</a></li>
+            <li><a href="/darkweb">Dark web monitor</a></li>
+            <li><a href="/ai-chat">AI analyst</a></li>
+          </ul>
+        </div>
+        <div>
+          <div class="fc-t">Intelligence</div>
+          <ul class="fl">
+            <li><a href="/apt">APT database</a></li>
+            <li><a href="/analytics">MITRE coverage</a></li>
+          </ul>
+        </div>
+        <div>
+          <div class="fc-t">Company</div>
+          <ul class="fl"><li><a href="#">About</a></li><li><a href="#">Docs</a></li></ul>
+        </div>
+      </div>
+      <div class="footer-bot">
+        <span>© 2026 Unified Security Hub. Built for security professionals.</span>
+        <div class="footer-bot-r"><a href="#">Terms</a><a href="#">Privacy</a><a href="#">Security</a></div>
+      </div>
+    </footer>
+
+    <!-- GLOBAL SCRIPTS -->
+    <script>
+    // Socket.io initialization
+    window.socket = io();
+
+    // Cursor Glow Effect
+    const glow = document.getElementById('cursor-glow');
+    const dot = document.getElementById('cursor-dot');
+
+    let mx = window.innerWidth/2, my = window.innerHeight/2;
+    let gx = mx, gy = my;
+
+    document.addEventListener('mousemove', e => {
+      mx = e.clientX; my = e.clientY;
+      dot.style.left = mx + 'px';
+      dot.style.top = my + 'px';
+    });
+
+    function lerp(a,b,t){return a+(b-a)*t}
+
+    function animateCursor(){
+      gx = lerp(gx, mx, 0.07);
+      gy = lerp(gy, my, 0.07);
+      glow.style.left = gx + 'px';
+      glow.style.top = gy + 'px';
+      requestAnimationFrame(animateCursor);
+    }
+    animateCursor();
+
+    const obs = new IntersectionObserver(entries => {
+      entries.forEach((e,i) => {
+        if(e.isIntersecting){
+          setTimeout(() => e.target.classList.add('in'), i * 60);
+          obs.unobserve(e.target);
+        }
+      });
+    }, {threshold: 0.1});
+    document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
+
+    // User dropdown toggle
+    function toggleDropdown() {
+        const panel = document.getElementById('userDropdownPanel');
+        if (panel) panel.classList.toggle('open');
+    }
+    document.addEventListener('click', function(e) {
+        const wrap = document.getElementById('userDropdownWrap');
+        if (wrap && !wrap.contains(e.target)) {
+            const panel = document.getElementById('userDropdownPanel');
+            if (panel) panel.classList.remove('open');
+        }
+    });
+
+    // ── THEME TOGGLE ──
+    const DARK_KEY = 'sechub-theme';
+    function applyTheme(dark) {
+        document.documentElement.classList.remove('dark-preload');
+        if (dark) {
+            document.body.classList.add('dark');
+            const icon = document.getElementById('themeIcon');
+            if (icon) { icon.classList.remove('fa-moon'); icon.classList.add('fa-sun'); }
+        } else {
+            document.body.classList.remove('dark');
+            const icon = document.getElementById('themeIcon');
+            if (icon) { icon.classList.remove('fa-sun'); icon.classList.add('fa-moon'); }
+        }
+    }
+    function toggleTheme() {
+        const isDark = document.body.classList.contains('dark');
+        localStorage.setItem(DARK_KEY, isDark ? 'light' : 'dark');
+        applyTheme(!isDark);
+    }
+    // Apply saved preference immediately on load
+    (function() {
+        const saved = localStorage.getItem(DARK_KEY);
+        const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        applyTheme(saved === 'dark' || (!saved && prefersDark));
+    })();
+    </script>
+    
+    {% block scripts %}{% endblock %}
+</body>
+</html>

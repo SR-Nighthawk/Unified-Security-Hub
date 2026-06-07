@@ -1,0 +1,313 @@
+{% extends "layout.html" %}
+{% block title %}Cyber AI Chat | Unified Security Hub{% endblock %}
+
+{% block content %}
+<div class="page-container reveal" style="padding-top: 60px;">
+    <div class="grid-cols-3" style="height: calc(100vh - 120px); gap: 24px;">
+        <!-- Sidebar: Sessions -->
+        <div class="panel" style="padding:0; overflow:hidden; display:flex; flex-direction:column;">
+            <div style="padding: 16px; border-bottom: 1px solid var(--border2); display:flex; align-items:center; justify-content:space-between;">
+                <div style="font-size:12px; font-weight:600;"><i class="fas fa-layer-group"></i> SESSIONS</div>
+                <button onclick="newSession()" class="btn-sm"><i class="fas fa-plus"></i> New</button>
+            </div>
+            <div id="sessionsList" style="flex:1; overflow:auto; padding: 12px; display:flex; flex-direction:column; gap:8px;"></div>
+            <div style="padding: 16px; border-top: 1px solid var(--border2); background:var(--bg);">
+                <div class="form-group" style="margin-bottom:0;">
+                    <label class="form-label">AI Model</label>
+                    <select id="modelSelect" class="form-select"></select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat Area -->
+        <div class="panel" style="grid-column: span 2; padding:0; overflow:hidden; display:flex; flex-direction:column;">
+            <div style="padding: 16px 20px; border-bottom: 1px solid var(--border2); display:flex; align-items:center; justify-content:space-between; background:var(--bg);">
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <div style="width:36px; height:36px; border-radius:8px; background:var(--accent-light); color:var(--accent2); display:flex; align-items:center; justify-content:center; font-size:16px;">
+                        <i class="fas fa-brain"></i>
+                    </div>
+                    <div>
+                        <div id="chatTitle" style="font-size:14px; font-weight:600; letter-spacing:-0.02em;">Cyber Sentinel AI</div>
+                        <div id="chatProvider" style="font-size:11px; color:var(--text3); font-family:var(--mono);">NVIDIA Mistral + Gemini</div>
+                    </div>
+                </div>
+                <div>
+                    <label for="chatFileUpload" class="btn-sm" style="cursor:pointer; display:inline-flex; align-items:center; gap:6px;"><i class="fas fa-paperclip"></i> Attach File</label>
+                    <input id="chatFileUpload" type="file" style="display:none;" onchange="uploadFile(this)">
+                </div>
+            </div>
+
+            <div id="uploadedFileIndicator" style="display:none; padding: 12px 20px; border-bottom: 1px solid var(--border); background: var(--bg2);">
+                <span style="font-size:11px; font-weight:500; display:inline-flex; align-items:center; gap:6px; color:var(--text2);">
+                    <i class="fas fa-file-lines"></i>
+                    <span id="uploadedFileName"></span>
+                    <button onclick="clearUpload()" style="background:none; border:none; color:var(--red); cursor:pointer;"><i class="fas fa-xmark"></i></button>
+                </span>
+            </div>
+
+            <div id="chatMessages" class="chat-vis" style="flex:1; overflow:auto; padding: 20px;">
+                <div class="empty" id="welcomeScreen" style="text-align:center; padding: 40px 20px;">
+                    <h2 style="font-size: 20px; font-weight:600; margin-bottom:8px;">Cyber Sentinel AI</h2>
+                    <p style="font-size:13px; color:var(--text2); max-width:400px; margin:0 auto 24px;">Ask for triage, exploit analysis, mitigations, or to interpret a scan report.</p>
+                    <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
+                        <button onclick="insertPrompt('Analyze the latest scan results and prioritize critical findings')" class="btn-sm">Analyze Scan</button>
+                        <button onclick="insertPrompt('Explain CVE-2024-21762 and its impact')" class="btn-sm">Explain CVE</button>
+                        <button onclick="insertPrompt('Generate a Linux server hardening checklist')" class="btn-sm">Hardening Guide</button>
+                    </div>
+                </div>
+            </div>
+
+            <div style="padding: 16px 20px; border-top: 1px solid var(--border2); background:var(--surface);">
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <textarea id="chatInput" class="form-textarea" rows="1" placeholder="Ask SecHub AI... (Enter to send)" style="resize:none; padding-top:12px; height:44px; max-height:120px;"></textarea>
+                    <button id="sendBtn" class="btn-dark btn-sm" onclick="sendMessage()" style="height:44px; padding:0 20px; flex-shrink:0;"><i class="fas fa-arrow-up"></i> Send</button>
+                </div>
+                <div style="text-align:right; margin-top:8px; font-size:10px; color:var(--text3); font-family:var(--mono);">Shift+Enter for newline</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+    let chatId = null;
+    let messages = [];
+    let streaming = false;
+    let uploadedContent = null;
+
+    const textarea = document.getElementById('chatInput');
+    textarea.addEventListener('input', () => {
+        textarea.style.height = 'auto';
+        textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
+    });
+
+    function handleKey(e) {
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+    }
+    textarea.addEventListener('keydown', handleKey);
+
+    function insertPrompt(text) {
+        document.getElementById('chatInput').value = text;
+        document.getElementById('chatInput').focus();
+    }
+
+    async function loadModels() {
+        const res = await fetch('/api/chat/models');
+        const data = await res.json();
+        const sel = document.getElementById('modelSelect');
+        sel.innerHTML = data.models.map(m => `<option value="${m.name}">${m.provider} - ${m.name}</option>`).join('');
+    }
+
+    async function loadSessions() {
+        const res = await fetch('/api/chat/sessions');
+        const data = await res.json();
+        const list = document.getElementById('sessionsList');
+        list.innerHTML = data.sessions.map(s => `
+            <div style="padding: 10px 12px; border: 1px solid ${chatId === s.id ? 'var(--accent2)' : 'var(--border)'}; background: ${chatId === s.id ? 'var(--accent-light)' : 'var(--surface)'}; border-radius: 8px; cursor: pointer; display:flex; justify-content:space-between; align-items:center;" onclick="loadChat('${s.id}')">
+                <div style="min-width:0;">
+                    <div style="font-size:10px; font-family:var(--mono); color:var(--text3); margin-bottom:2px;">SESSION</div>
+                    <div style="font-size:13px; font-weight:500; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${s.title}</div>
+                </div>
+                <button onclick="event.stopPropagation(); deleteSession('${s.id}')" style="background:none; border:none; color:var(--text3); cursor:pointer;"><i class="fas fa-trash"></i></button>
+            </div>
+        `).join('');
+    }
+
+    function newSession() {
+        chatId = 'chat_' + Date.now();
+        messages = [];
+        document.getElementById('chatMessages').innerHTML = `
+            <div class="empty" id="welcomeScreen" style="text-align:center; padding: 40px 20px;">
+                <h2 style="font-size: 20px; font-weight:600; margin-bottom:8px;">Cyber Sentinel AI</h2>
+                <p style="font-size:13px; color:var(--text2); max-width:400px; margin:0 auto 24px;">Ask for triage, exploit analysis, mitigations, or to interpret a scan report.</p>
+                <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
+                    <button onclick="insertPrompt('Analyze the latest scan results and prioritize critical findings')" class="btn-sm">Analyze Scan</button>
+                    <button onclick="insertPrompt('Explain CVE-2024-21762 and its impact')" class="btn-sm">Explain CVE</button>
+                    <button onclick="insertPrompt('Generate a Linux server hardening checklist')" class="btn-sm">Hardening Guide</button>
+                </div>
+            </div>
+        `;
+        loadSessions();
+    }
+
+    async function loadChat(id) {
+        const res = await fetch(`/api/chat/sessions/${id}`);
+        const data = await res.json();
+        if (!data.success) return;
+        chatId = id;
+        messages = data.data.messages.filter(m => m.role !== 'system');
+        document.getElementById('chatTitle').innerText = data.data.title || 'Investigation';
+        renderMessages();
+        loadSessions();
+    }
+
+    async function deleteSession(id) {
+        if (!confirm('Delete this session?')) return;
+        await fetch(`/api/chat/sessions/${id}`, { method: 'DELETE' });
+        if (chatId === id) newSession();
+        loadSessions();
+    }
+
+    function renderMessages() {
+        const area = document.getElementById('chatMessages');
+        area.innerHTML = messages.map(m => renderMsg(m.role, m.content, m.ts)).join('');
+        area.scrollTop = area.scrollHeight;
+    }
+
+    function renderMsg(role, content, ts) {
+        const isUser = role === 'user';
+        const parsed = !isUser ? marked.parse(content || '') : escapeHtml(content || '');
+        const whoStr = isUser ? 'You' : 'AI Analyst';
+        const msgClass = isUser ? 'ai-user' : 'ai-bot';
+        
+        return `
+            <div style="margin-bottom:16px;">
+                <div class="ai-who" style="text-align: ${isUser ? 'right' : 'left'};">${whoStr}</div>
+                <div class="ai-msg ${msgClass} chat-md">
+                    ${parsed}
+                </div>
+            </div>
+        `;
+    }
+
+    function escapeHtml(s) {
+        return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+    }
+
+    async function uploadFile(input) {
+        const file = input.files[0];
+        if (!file) return;
+        const form = new FormData();
+        form.append('file', file);
+        const res = await fetch('/api/chat/upload', { method: 'POST', body: form });
+        const data = await res.json();
+        if (data.success) {
+            uploadedContent = `[File: ${data.filename}]\n${data.content}`;
+            document.getElementById('uploadedFileName').innerText = data.filename;
+            document.getElementById('uploadedFileIndicator').style.display = 'block';
+        }
+        input.value = '';
+    }
+
+    function clearUpload() {
+        uploadedContent = null;
+        document.getElementById('uploadedFileIndicator').style.display = 'none';
+    }
+
+    async function sendMessage() {
+        if (streaming) return;
+        let text = document.getElementById('chatInput').value.trim();
+        if (!text && !uploadedContent) return;
+
+        if (uploadedContent) {
+            text = text + '\n\n' + uploadedContent;
+            clearUpload();
+        }
+
+        if (!chatId) chatId = 'chat_' + Date.now();
+
+        const welcome = document.querySelector('#welcomeScreen');
+        if (welcome) welcome.remove();
+
+        messages.push({ role: 'user', content: text, ts: '' });
+        const area = document.getElementById('chatMessages');
+        area.insertAdjacentHTML('beforeend', renderMsg('user', text));
+
+        document.getElementById('chatInput').value = '';
+        document.getElementById('chatInput').style.height = '44px';
+
+        streaming = true;
+        document.getElementById('sendBtn').disabled = true;
+
+        const assistantMsgId = 'assist_' + Date.now();
+        area.insertAdjacentHTML('beforeend', `
+            <div style="margin-bottom:16px;" id="${assistantMsgId}">
+                <div class="ai-who">AI Analyst</div>
+                <div class="ai-msg ai-bot chat-md msg-body">
+                    <span class="ai-cursor" style="display:inline-block; width:8px; height:14px; background:var(--accent2); animation:blink 1s infinite;"></span> Awaiting response...
+                </div>
+            </div>
+        `);
+        area.scrollTop = area.scrollHeight;
+
+        try {
+            const model = document.getElementById('modelSelect').value;
+            const title = messages.find(m => m.role === 'user')?.content?.slice(0, 50) || 'Investigation';
+            const response = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ messages, model, chat_id: chatId, title })
+            });
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let fullContent = '';
+            const msgEl = document.getElementById(assistantMsgId);
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                const text = decoder.decode(value, { stream: true });
+                const lines = text.split('\n');
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        try {
+                            const d = JSON.parse(line.slice(6));
+                            if (d.error) {
+                                msgEl.querySelector('.msg-body').innerHTML = `<span style="color:var(--red);"><i class="fas fa-exclamation-triangle"></i> ${d.error}</span>`;
+                            } else if (d.content) {
+                                fullContent += d.content;
+                                msgEl.querySelector('.msg-body').innerHTML = marked.parse(fullContent);
+                            }
+                            if (d.chat_id) chatId = d.chat_id;
+                        } catch (e) {}
+                    }
+                }
+                area.scrollTop = area.scrollHeight;
+            }
+
+            messages.push({ role: 'assistant', content: fullContent, ts: '' });
+            loadSessions();
+
+        } catch (e) {
+            console.error('Chat error:', e);
+            const msgEl = document.getElementById(assistantMsgId);
+            if (msgEl) msgEl.querySelector('.msg-body').innerHTML = `<span style="color:var(--red);"><i class="fas fa-exclamation-triangle"></i> Connection error: ${e.message}</span>`;
+        }
+
+        streaming = false;
+        document.getElementById('sendBtn').disabled = false;
+    }
+
+    loadModels();
+    loadSessions();
+    newSession();
+
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('report_id') && params.get('summary')) {
+        fetch(`/api/report-data/${params.get('report_id')}`)
+            .then(r => r.json())
+            .then(d => {
+                if (d.success && d.data?.data?.ai_summary) {
+                    document.getElementById('chatInput').value = `Here is a scan report summary. Analyze this and provide additional recommendations:\n\n${d.data.data.ai_summary}`;
+                }
+            }).catch(e => console.error(e));
+    }
+</script>
+<style>
+.chat-md pre {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  overflow: auto;
+  margin: 10px 0;
+}
+.chat-md code { font-family: var(--mono); font-size: 12px; }
+.chat-md p { margin: 8px 0; }
+.chat-md ul, .chat-md ol { margin: 8px 0; padding-left: 20px; }
+.chat-md h1, .chat-md h2, .chat-md h3 { margin: 16px 0 8px; font-weight: 600; }
+</style>
+{% endblock %}

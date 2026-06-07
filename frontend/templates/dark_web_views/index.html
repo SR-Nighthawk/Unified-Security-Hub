@@ -1,0 +1,296 @@
+{% extends "layout.html" %}
+{% block title %}Dark Web Crawler | Unified Security Hub{% endblock %}
+
+{% block content %}
+<div class="page-container reveal" style="padding-top: 60px;">
+    <!-- Page Header -->
+    <div class="page-header" style="display:flex; justify-content:space-between; align-items:flex-end;">
+        <div>
+            <div class="eyebrow" style="margin-bottom:8px;">Threat Intelligence</div>
+            <h1 class="page-title">Dark Web Monitor</h1>
+            <p class="page-subtitle">Tor + Playwright crawling with AI analysis and persistent vault entries for dossier export.</p>
+        </div>
+        <div style="display:flex; gap:12px; align-items:flex-end;">
+            <div class="form-group" style="margin-bottom:0; width: 240px;">
+                <label class="form-label">Keyword / Organization</label>
+                <input id="key" type="text" class="form-input" placeholder="e.g. Acme Corp" />
+            </div>
+            <button id="scan-btn" onclick="triggerScan()" class="btn-lg"><i class="fas fa-play"></i> Initialize</button>
+            <button id="abort-btn" onclick="stopScan()" class="btn-lg" style="background:var(--bg2); color:var(--text2); border-color:var(--border);" disabled><i class="fas fa-stop"></i> Abort</button>
+        </div>
+    </div>
+    
+    <div style="display:flex; justify-content:flex-end; gap:12px; margin-bottom: 24px;">
+        <button onclick="clearVault()" class="btn-sm" style="background:none; border:1px solid var(--border); color:var(--text2);"><i class="fas fa-trash"></i> Flush Vault</button>
+        <a href="/download_pdf" class="btn-sm"><i class="fas fa-file-pdf"></i> Download Dossier</a>
+    </div>
+
+    <div class="grid-cols-4" style="gap:24px; align-items:start;">
+        
+        <!-- Left Sidebar: Metrics & Intel Nodes -->
+        <div class="panel" style="padding:0; overflow:hidden; display:flex; flex-direction:column; grid-column: span 1;">
+            <div style="padding: 16px; border-bottom: 1px solid var(--border2); display:flex; align-items:center; justify-content:space-between;">
+                <div style="font-size:12px; font-weight:600;"><i class="fas fa-gauge-high"></i> Metrics</div>
+                <div id="time-display" style="font-family:var(--mono); font-size:10px; color:var(--text3);">--:--:-- UTC</div>
+            </div>
+            <div style="padding: 16px; display:flex; flex-direction:column; gap:16px;">
+                <div style="padding: 16px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm);">
+                    <div style="font-size:12px; font-weight:500; color:var(--text2); margin-bottom:4px;">Crawled URLs</div>
+                    <div id="stat-hits" style="font-size:28px; font-weight:700; color:var(--text);">0</div>
+                </div>
+                <div style="padding: 16px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm);">
+                    <div style="font-size:12px; font-weight:500; color:var(--text2); margin-bottom:12px;">Threat Score</div>
+                    <div style="display:flex; align-items:center; justify-content:space-between;">
+                        <svg width="80" height="48" viewBox="0 0 120 72" style="display:block;">
+                            <path d="M10 62 A50 50 0 0 1 110 62" stroke="var(--border2)" stroke-width="12" fill="none" stroke-linecap="round"/>
+                            <path id="gaugeArc" d="M10 62 A50 50 0 0 1 110 62" stroke="var(--green)" stroke-width="12" fill="none" stroke-linecap="round" stroke-dasharray="0 999"/>
+                        </svg>
+                        <div style="text-align:right;">
+                            <div id="gaugeValue" style="font-size:24px; font-weight:700; font-family:var(--mono); color:var(--green);">0</div>
+                            <div id="stat-threat" style="font-size:10px; font-weight:600; color:var(--text3); text-transform:uppercase; letter-spacing:0.05em;">NONE</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div style="padding: 16px; border-top: 1px solid var(--border2);">
+                <div style="font-size:12px; font-weight:600; margin-bottom:12px;">Intelligence Nodes</div>
+                <div style="max-height: 240px; overflow:auto;">
+                    <table class="data-table">
+                        <tbody id="intel-table"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Center: Live Feed -->
+        <div class="panel" style="padding:0; overflow:hidden; grid-column: span 2;">
+            <div style="padding: 16px; border-bottom: 1px solid var(--border2); display:flex; align-items:center; justify-content:space-between;">
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span id="scan-indicator" style="width:8px; height:8px; border-radius:50%; background:var(--text3);"></span>
+                    <span id="engine-status" style="font-family:var(--mono); font-size:11px; font-weight:600; color:var(--text2); text-transform:uppercase;">ENGINE IDLE</span>
+                </div>
+                <span style="font-size:10px; font-weight:600; padding:4px 8px; border-radius:4px; font-family:var(--mono); background:var(--accent-light); color:var(--accent2);"><i class="fas fa-satellite-dish"></i> LIVE FEED</span>
+            </div>
+            <div id="results-area" style="padding: 20px; max-height: 600px; overflow:auto; background:var(--bg);">
+                <div class="empty" style="text-align:center; padding: 60px 20px;">
+                    <h3 style="font-size:16px; font-weight:600; color:var(--text); margin-bottom:8px;">System Idle</h3>
+                    <p style="font-size:13px; color:var(--text2);">Provide parameters and initialize scan to receive intel.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Sidebar: Log & Activity -->
+        <div class="panel" style="padding:0; overflow:hidden; display:flex; flex-direction:column; grid-column: span 1;">
+            <div style="padding: 16px; border-bottom: 1px solid var(--border2); display:flex; align-items:center; justify-content:space-between;">
+                <div style="font-size:12px; font-weight:600;"><i class="fas fa-terminal"></i> Mission Log</div>
+                <div style="font-family:var(--mono); font-size:10px; color:var(--text3);">status</div>
+            </div>
+            <div class="terminal-log" id="log" style="flex:1; max-height:300px; padding: 12px; font-size:11px;">
+                <span class="log-info">&gt; System initialized. Ready to deploy.</span>
+            </div>
+            <div style="padding: 16px; border-top: 1px solid var(--border2);">
+                <div style="font-size:12px; font-weight:600; margin-bottom:12px;">Threat Distribution</div>
+                <div style="height: 140px; display:flex; justify-content:center; align-items:center;">
+                    <canvas id="threatChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let hitCount = 0, threats = [], threatChart;
+    let avgRisk = 0;
+    let seen = 0;
+
+    window.onload = () => {
+        threatChart = new Chart(document.getElementById('threatChart').getContext('2d'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Critical', 'High', 'Medium', 'Low'],
+                datasets: [{ 
+                    data: [0, 0, 0, 0], 
+                    backgroundColor: ['#dc2626', '#d97706', '#6366f1', '#16a34a'], 
+                    borderWidth: 0 
+                }]
+            },
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false, 
+                plugins: { legend: { display: false } }, 
+                cutout: '70%' 
+            }
+        });
+    };
+
+    setInterval(() => {
+        const now = new Date();
+        const t = `${String(now.getUTCHours()).padStart(2,'0')}:${String(now.getUTCMinutes()).padStart(2,'0')}:${String(now.getUTCSeconds()).padStart(2,'0')} UTC`;
+        document.getElementById('time-display').innerText = t;
+    }, 1000);
+
+    function setGauge(score) {
+        const arc = document.getElementById('gaugeArc');
+        const val = document.getElementById('gaugeValue');
+        if (!arc || !val) return;
+        const s = Math.max(0, Math.min(100, Number(score || 0)));
+        val.textContent = String(Math.round(s));
+        const len = 157; 
+        const dash = (s / 100) * len;
+        arc.setAttribute('stroke-dasharray', `${dash} 999`);
+        const col = s > 70 ? 'var(--red)' : s > 40 ? 'var(--amber)' : 'var(--green)';
+        arc.setAttribute('stroke', col);
+        val.style.color = col;
+    }
+
+    function triggerScan() {
+        const key = document.getElementById('key').value;
+        if(!key) return;
+        document.getElementById('results-area').innerHTML = '';
+        document.getElementById('intel-table').innerHTML = '';
+        hitCount = 0; threats = []; avgRisk = 0; seen = 0; updateStats();
+        setGauge(0);
+        
+        document.getElementById('scan-indicator').style.background = 'var(--amber)';
+        document.getElementById('engine-status').innerText = 'Scanning Dark Web...';
+        
+        const abrt = document.getElementById('abort-btn');
+        abrt.disabled = false;
+        abrt.style.background = 'var(--surface)';
+        abrt.style.borderColor = 'var(--red)';
+        abrt.style.color = 'var(--red)';
+        
+        socket.emit('trigger_scan', {key: key});
+    }
+
+    function stopScan() {
+        socket.emit('stop_scan');
+        document.getElementById('engine-status').innerText = 'Aborting...';
+        
+        const abrt = document.getElementById('abort-btn');
+        abrt.disabled = true;
+        abrt.style.background = 'var(--bg2)';
+        abrt.style.borderColor = 'var(--border)';
+        abrt.style.color = 'var(--text2)';
+    }
+
+    function clearVault() {
+        if(confirm('Purge Intelligence Vault? This clears PDF report history.')) {
+            socket.emit('clear_vault');
+            document.getElementById('results-area').innerHTML = '';
+            document.getElementById('intel-table').innerHTML = '';
+            hitCount = 0; threats = []; updateStats();
+            setGauge(0);
+        }
+    }
+
+    function updateStats() {
+        document.getElementById('stat-hits').innerText = hitCount;
+        if(threats.length > 0) {
+            const isHigh = threats.includes('HIGH') || threats.includes('CRITICAL');
+            document.getElementById('stat-threat').innerText = isHigh ? 'HIGH' : 'LOW';
+            document.getElementById('stat-threat').style.color = isHigh ? 'var(--red)' : 'var(--green)';
+        } else {
+            document.getElementById('stat-threat').innerText = 'NONE';
+            document.getElementById('stat-threat').style.color = 'var(--text3)';
+        }
+    }
+
+    socket.on('status_update', (data) => {
+        const log = document.getElementById('log');
+        let cls = 'log-info';
+        if (data.type === 'error') cls = 'log-error';
+        else if (data.type === 'warning') cls = 'log-warn';
+        else if (data.type === 'success' || data.type === 'done') cls = 'log-success';
+        
+        const span = document.createElement('span');
+        span.className = cls;
+        span.textContent = `> ${data.msg}`;
+        log.appendChild(span);
+        log.scrollTop = log.scrollHeight;
+        
+        if(data.type === 'done') {
+            document.getElementById('scan-indicator').style.background = 'var(--green)';
+            document.getElementById('engine-status').innerText = 'Engine Idle';
+            const abrt = document.getElementById('abort-btn');
+            abrt.disabled = true;
+            abrt.style.background = 'var(--bg2)';
+            abrt.style.borderColor = 'var(--border)';
+            abrt.style.color = 'var(--text2)';
+        }
+    });
+
+    socket.on('intel_found', (data) => {
+        hitCount++; threats.push(data.threat); updateStats();
+        const rs = Number(data.risk_score || 0);
+        seen++;
+        avgRisk = ((avgRisk * (seen - 1)) + rs) / seen;
+        setGauge(avgRisk);
+
+        const area = document.getElementById('results-area');
+        const threatLower = (data.threat || '').toLowerCase();
+        let threatColor = 'var(--text)';
+        let threatBg = 'transparent';
+        if (threatLower === 'critical' || threatLower === 'high') { threatColor = 'var(--red)'; threatBg = 'rgba(220,38,38,0.1)'; }
+        else if (threatLower === 'medium') { threatColor = 'var(--amber)'; threatBg = 'rgba(217,119,6,0.1)'; }
+        else { threatColor = 'var(--green)'; threatBg = 'rgba(22,163,74,0.1)'; }
+        
+        const riskBg = data.risk_score > 70 ? 'var(--red)' : data.risk_score > 40 ? 'var(--amber)' : 'var(--green)';
+        
+        area.insertAdjacentHTML('afterbegin', `
+            <div style="background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); padding:20px; margin-bottom:16px; border-left:4px solid ${threatColor}; box-shadow:0 1px 3px rgba(0,0,0,0.02);">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+                    <div style="display: flex; gap: 8px;">
+                        <span style="font-size:10px; font-weight:600; padding:4px 8px; border-radius:4px; font-family:var(--mono); background:${threatBg}; color:${threatColor};">${data.threat} THREAT</span>
+                        <span style="font-size:10px; font-weight:600; padding:4px 8px; border-radius:4px; font-family:var(--mono); background:var(--bg); border:1px solid var(--border); color:var(--text2);">ID: ${data.id}</span>
+                    </div>
+                    <span style="font-size:11px; color:var(--text3); font-family:var(--mono);">${data.timestamp}</span>
+                </div>
+                
+                <div style="font-family:var(--mono); font-size:13px; font-weight:600; color:var(--accent2); margin-bottom:16px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${data.url}">${data.url}</div>
+                
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; padding:12px; background:var(--bg); border-radius:8px;">
+                    <div>
+                        <div style="font-size:10px; font-weight:600; color:var(--text3); text-transform:uppercase; margin-bottom:4px;">Victims</div>
+                        <div style="font-size:13px; font-weight:500; color:var(--text);">${data.victims}</div>
+                    </div>
+                    <div>
+                        <div style="font-size:10px; font-weight:600; color:var(--text3); text-transform:uppercase; margin-bottom:4px;">Entities</div>
+                        <div style="font-size:12px; font-family:var(--mono); color:var(--accent2);">${data.entities}</div>
+                    </div>
+                </div>
+                
+                <div style="margin-bottom:16px;">
+                    <div style="display:flex; justify-content:space-between; font-size:10px; font-family:var(--mono); font-weight:600; color:var(--text2); text-transform:uppercase; margin-bottom:6px;">
+                        <span>Risk Score</span><span>${data.risk_score}%</span>
+                    </div>
+                    <div class="bar" style="height:6px;"><div class="bar-fill" style="width:${data.risk_score}%; background:${riskBg};"></div></div>
+                </div>
+                
+                <div>
+                    <div style="font-size:11px; font-weight:600; color:var(--text2); margin-bottom:6px;">AI Analysis</div>
+                    <p style="font-size:13px; color:var(--text); line-height:1.6; margin:0;">${data.intel}</p>
+                </div>
+            </div>
+        `);
+
+        document.getElementById('intel-table').insertAdjacentHTML('afterbegin', `
+            <tr>
+                <td style="font-family:var(--mono); font-size:11px; font-weight:500;">#${data.id.substring(0,4)}</td>
+                <td style="font-family:var(--mono); font-size:11px; font-weight:600; color:${threatColor};">${data.threat}</td>
+                <td style="font-family:var(--mono); font-size:10px; font-weight:600; color:var(--green);">SAVED</td>
+            </tr>
+        `);
+
+        const t = data.threat.toUpperCase();
+        if(t.includes('CRITICAL')) threatChart.data.datasets[0].data[0]++;
+        else if(t.includes('HIGH')) threatChart.data.datasets[0].data[1]++;
+        else if(t.includes('MEDIUM')) threatChart.data.datasets[0].data[2]++;
+        else threatChart.data.datasets[0].data[3]++;
+        threatChart.update();
+    });
+</script>
+{% endblock %}

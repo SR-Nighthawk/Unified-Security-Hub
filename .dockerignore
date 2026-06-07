@@ -1,0 +1,52 @@
+# ── Git ──
+.git
+.gitignore
+
+# ── Python ──
+__pycache__
+*.pyc
+*.pyo
+*.egg-info
+venv/
+.venv/
+.pytest_cache/
+
+# ── Environment (NEVER bake secrets into images) ──
+.env
+
+# ── IDE / OS ──
+.vscode/
+.idea/
+*.swp
+*.swo
+Thumbs.db
+.DS_Store
+
+# ── Database (will be mounted as volume) ──
+database/*.db
+
+# ── Generated Reports (will be mounted as volume) ──
+backend/reports/*.json
+backend/reports/*.html
+backend/reports/*.pdf
+backend/reports/screenshots/
+
+# ── Sessions (will be mounted as volume) ──
+backend/sessions/*.json
+
+# ── Static proof screenshots ──
+static/proof_*.png
+static/screenshots/
+
+# ── PDFs / Large files ──
+*.pdf
+response.html
+
+# ── Docker / CI ──
+docker-compose.yml
+docker-compose*.yml
+nginx/
+
+# ── Test / Dev files ──
+_live_smoke_test.py
+refactor_*.py

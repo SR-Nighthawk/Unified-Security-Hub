@@ -1,0 +1,285 @@
+{% extends "layout.html" %}
+{% block title %}Web Scanner | Unified Security Hub{% endblock %}
+
+{% block content %}
+<div class="page-container reveal">
+    <div class="page-header" style="display:flex; justify-content:space-between; align-items:flex-end;">
+        <div>
+            <div class="eyebrow" style="margin-bottom:8px;">VAPT Suite</div>
+            <h1 class="page-title">Web Application Scanner</h1>
+            <p class="page-subtitle">Advanced integration for automated web app testing. DAST workflows and analysis.</p>
+        </div>
+        <div style="display:flex; gap:12px;">
+            <a href="/reports" class="btn-lg-out"><i class="fas fa-file-lines"></i> Reports</a>
+        </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="panel" style="margin-bottom: 24px;">
+        <div class="grid-cols-3" style="align-items:end; gap: 16px;">
+            <div class="form-group" style="margin-bottom:0;">
+                <label class="form-label">Target URL</label>
+                <input type="text" id="targetInput" class="form-input" value="http://testphp.vulnweb.com" placeholder="https://example.com" />
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+                <label class="form-label">Scanner Engine Path</label>
+                <input type="text" id="exePathInput" class="form-input" value="{{ default_zap_path or 'C:\\Program Files\\ZAP\\Zed Attack Proxy\\ZAP.exe' }}" />
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+                <label class="form-label">Scan Type</label>
+                <select id="scanTypeInput" class="form-select">
+                    <option value="active">Active Scan (Deep)</option>
+                    <option value="passive">Passive Scan (Spider)</option>
+                </select>
+            </div>
+        </div>
+
+        <div style="margin-top: 16px; border-top: 1px solid var(--border); padding-top: 16px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; cursor:pointer;" id="toggleAuthBtn">
+                <div style="font-size: 13px; font-weight: 600; color:var(--text2);"><i class="fas fa-key"></i> Authenticated Scan (Advanced)</div>
+                <div style="font-size: 12px; color:var(--text3);"><i class="fas fa-chevron-down" id="authChevron"></i></div>
+            </div>
+            
+            <div id="authContainer" class="grid-cols-3" style="display:none; align-items:end; gap: 16px; margin-top: 16px; padding: 16px; background:var(--bg2); border-radius:var(--radius-sm); border: 1px solid var(--border2);">
+                <div class="form-group" style="margin-bottom:0;">
+                    <label class="form-label">Login Page URL</label>
+                    <input type="text" id="authLoginUrl" class="form-input" placeholder="https://example.com/login" />
+                </div>
+                <div class="form-group" style="margin-bottom:0;">
+                    <label class="form-label">Username</label>
+                    <input type="text" id="authUsername" class="form-input" placeholder="admin" />
+                </div>
+                <div class="form-group" style="margin-bottom:0;">
+                    <label class="form-label">Password</label>
+                    <input type="password" id="authPassword" class="form-input" placeholder="••••••••" />
+                </div>
+            </div>
+            <div style="margin-top:20px;">
+                <button id="startBtn" class="btn-lg" style="width: 100%; height: 42px; justify-content:center;"><i class="fas fa-spider"></i> Launch Deep Scan</button>
+            </div>
+        </div>
+
+        <div style="margin-top: 20px;">
+            <div id="progressContainer" class="bar" style="display:none;">
+                <div id="progressBar" class="bar-fill fill-b" style="width:0%;"></div>
+            </div>
+            <div id="progressText" style="display:none; font-family:var(--mono); font-size:11px; color:var(--text3); text-align:right; margin-top:8px;">Deep AF Web scan in progress... (May take several minutes): 0%</div>
+        </div>
+
+        <div id="postScanActions" style="display:none; margin-top: 20px; padding: 16px; background: rgba(99,102,241,0.04); border: 1px dashed rgba(99,102,241,0.2); border-radius: var(--radius-sm);">
+            <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap;">
+                <div>
+                    <div style="font-family:var(--mono); font-size:11px; font-weight:600; color:var(--accent2); text-transform:uppercase; letter-spacing:0.05em;"><i class="fas fa-check-double"></i> Scan Complete</div>
+                    <div style="font-size:13px; color:var(--text2); margin-top:4px;">Findings persisted to reports database.</div>
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <a id="viewReportBtn" href="#" class="btn-sm"><i class="fas fa-file-alt"></i> Report</a>
+                    <button id="aiSummaryBtn" class="btn-sm btn-dark"><i class="fas fa-brain"></i> AI Summary</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-bar" style="border: 1px solid var(--border2); border-radius: var(--radius); margin-bottom: 24px; overflow: hidden;">
+        <div class="stat">
+            <div class="stat-n"><strong id="mHigh" style="color:var(--red);">-</strong></div>
+            <div class="stat-l">High Risk</div>
+        </div>
+        <div class="stat">
+            <div class="stat-n"><strong id="mMed" style="color:var(--amber);">-</strong></div>
+            <div class="stat-l">Medium Risk</div>
+        </div>
+        <div class="stat">
+            <div class="stat-n"><strong id="mLow" style="color:var(--accent2);">-</strong></div>
+            <div class="stat-l">Low Risk</div>
+        </div>
+        <div class="stat">
+            <div class="stat-n"><strong id="mTotal" style="color:var(--text);">-</strong></div>
+            <div class="stat-l">Total Alerts</div>
+        </div>
+    </div>
+
+    <div class="panel" style="padding:0; overflow:hidden; display:flex; flex-direction:column;">
+        <div style="padding: 16px; border-bottom: 1px solid var(--border2); display:flex; justify-content:space-between; align-items:center;">
+            <div style="font-size:12px; font-weight:600;"><i class="fas fa-exclamation-triangle"></i> DAST Findings</div>
+            <div style="font-family:var(--mono); font-size:10px; color:var(--text3);">web scanner alerts</div>
+        </div>
+        <div style="flex:1; overflow:auto; max-height:500px;">
+            <table class="data-table" id="alertsTable">
+                <thead>
+                    <tr>
+                        <th>Risk</th>
+                        <th>Alert</th>
+                        <th>Confidence</th>
+                        <th>URL</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td colspan="4" style="text-align:center; padding:40px 16px; color:var(--text3); font-family:var(--mono);">No active scan data</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let currentReportId = null;
+
+    document.getElementById('toggleAuthBtn').onclick = () => {
+        const authContainer = document.getElementById('authContainer');
+        const chevron = document.getElementById('authChevron');
+        if (authContainer.style.display === 'none') {
+            authContainer.style.display = 'grid';
+            chevron.classList.replace('fa-chevron-down', 'fa-chevron-up');
+        } else {
+            authContainer.style.display = 'none';
+            chevron.classList.replace('fa-chevron-up', 'fa-chevron-down');
+        }
+    };
+
+    document.getElementById('startBtn').onclick = async () => {
+        const target = document.getElementById('targetInput').value;
+        const exe_path = document.getElementById('exePathInput').value;
+        const scan_type = document.getElementById('scanTypeInput').value;
+        const auth_login_url = document.getElementById('authLoginUrl').value;
+        const auth_username = document.getElementById('authUsername').value;
+        const auth_password = document.getElementById('authPassword').value;
+
+        if (!target) return alert("Target missing");
+
+        const btn = document.getElementById('startBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Engine Initializing...';
+        document.getElementById('postScanActions').style.display = 'none';
+
+        document.getElementById('mHigh').innerText = '-';
+        document.getElementById('mMed').innerText = '-';
+        document.getElementById('mLow').innerText = '-';
+        document.getElementById('mTotal').innerText = '-';
+        document.querySelector('#alertsTable tbody').innerHTML = '<tr><td colspan="4" style="text-align:center; padding:40px 16px; color:var(--text3); font-family:var(--mono);">Initializing scan engine...</td></tr>';
+
+        const payload = { target, exe_path, scan_type };
+        if (auth_login_url && auth_username && auth_password) {
+            payload.auth_login_url = auth_login_url;
+            payload.auth_username = auth_username;
+            payload.auth_password = auth_password;
+        }
+
+        const res = await fetch('/api/web/scan', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.success) {
+            pollTask(data.task_id);
+        } else {
+            alert("Scan failed to launch: " + data.error);
+            finishUI(false);
+        }
+    };
+
+    async function pollTask(taskId) {
+        const prog = document.getElementById('progressContainer');
+        const bar = document.getElementById('progressBar');
+        const text = document.getElementById('progressText');
+        prog.style.display = 'block';
+        text.style.display = 'block';
+
+        const interval = setInterval(async () => {
+            try {
+                const res = await fetch(`/api/task-status/${taskId}`);
+                const { data } = await res.json();
+                bar.style.width = data.progress + '%';
+                text.innerText = `Deep AF Web scan in progress... (May take several minutes): ${Math.round(data.progress)}%`;
+                
+                if (data.status === 'completed') {
+                    clearInterval(interval);
+                    currentReportId = data.result.report_id;
+                    renderResults(data.result);
+                    finishUI(true);
+                } else if (data.status === 'failed') {
+                    clearInterval(interval);
+                    alert("Scan failed: " + data.error);
+                    finishUI(false);
+                }
+            } catch(e) {
+                console.error(e);
+            }
+        }, 5000);
+    }
+
+    function renderResults(res) {
+        document.getElementById('mHigh').innerText = res.high || 0;
+        document.getElementById('mMed').innerText = res.medium || 0;
+        document.getElementById('mLow').innerText = res.low || 0;
+        document.getElementById('mTotal').innerText = res.total || 0;
+
+        const tbody = document.querySelector('#alertsTable tbody');
+        
+        if (!res.alerts || res.alerts.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:40px 16px; color:var(--text2);"><i class="fas fa-check-circle"></i> No vulnerabilities detected.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = res.alerts.map(a => {
+            const riskLower = (a.risk || '').toLowerCase();
+            let riskColor = 'var(--text3)';
+            let riskBg = 'transparent';
+            if (riskLower === 'high') { riskColor = 'var(--red)'; riskBg = 'rgba(220,38,38,0.1)'; }
+            else if (riskLower === 'medium') { riskColor = 'var(--amber)'; riskBg = 'rgba(217,119,6,0.1)'; }
+            else if (riskLower === 'low' || riskLower === 'info') { riskColor = 'var(--accent2)'; riskBg = 'rgba(99,102,241,0.1)'; }
+
+            return `
+            <tr>
+                <td><span style="font-size:10px; font-weight:600; padding:3px 8px; border-radius:4px; font-family:var(--mono); background:${riskBg}; color:${riskColor}; text-transform:uppercase;">${a.risk}</span></td>
+                <td style="font-weight: 500;">${a.name}</td>
+                <td style="font-size: 12px; color: var(--text3);">${a.confidence}</td>
+                <td style="font-size: 12px; color: var(--text2); max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${a.url}">${a.url}</td>
+            </tr>
+            `;
+        }).join('');
+
+        document.getElementById('viewReportBtn').href = `/report/${res.report_id}`;
+    }
+
+    function finishUI(success) {
+        document.getElementById('startBtn').disabled = false;
+        document.getElementById('startBtn').innerHTML = '<i class="fas fa-spider"></i> Launch Deep Scan';
+        document.getElementById('progressContainer').style.display = 'none';
+        document.getElementById('progressText').style.display = 'none';
+        if (success) {
+            document.getElementById('postScanActions').style.display = 'block';
+        }
+    }
+
+    document.getElementById('aiSummaryBtn').onclick = async () => {
+        if (!currentReportId) return;
+        const btn = document.getElementById('aiSummaryBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing';
+        
+        try {
+            const res = await fetch('/api/ai/summary', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ report_id: currentReportId, tool: 'WEBAPP' })
+            });
+            const data = await res.json();
+            if (data.success) {
+                window.location.href = `/ai-chat?report_id=${currentReportId}&summary=true`;
+            } else { 
+                alert("AI Summary failed: " + data.error); 
+            }
+        } catch (e) { console.error(e); }
+        
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-brain"></i> AI Summary';
+    };
+</script>
+{% endblock %}
