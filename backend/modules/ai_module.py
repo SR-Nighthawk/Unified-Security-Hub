@@ -222,7 +222,8 @@ def api_chat():
                 if "nvidia" in model.lower() or "mistral" in model.lower():
                     if GEMINI_API_KEY:
                         try:
-                            yield f"data: {json.dumps({'content': '\\n\\n*[Switching to Gemini fallback...]*\\n\\n', 'chat_id': chat_id})}\n\n"
+                            fallback_msg = {"content": "\n\n*[Switching to Gemini fallback...]*\n\n", "chat_id": chat_id}
+                            yield f"data: {json.dumps(fallback_msg)}\n\n"
                             full_response += "\n\n*[Switching to Gemini fallback...]*\n\n"
                             for content in chat_with_gemini(history):
                                 full_response += content
@@ -235,9 +236,11 @@ def api_chat():
                                 json.dump(session_data, f, indent=2)
                             return
                         except Exception as e2:
-                            yield f"data: {json.dumps({'error': f'All AI providers failed. NVIDIA: {error_msg[:80]}. Gemini: {str(e2)[:80]}'})}\n\n"
+                            err_payload = {"error": f"All AI providers failed. NVIDIA: {error_msg[:80]}. Gemini: {str(e2)[:80]}"}
+                            yield f"data: {json.dumps(err_payload)}\n\n"
                             return
-                yield f"data: {json.dumps({'error': f'AI Error: {error_msg[:150]}'})}\n\n"
+                err_payload = {"error": f"AI Error: {error_msg[:150]}"}
+                yield f"data: {json.dumps(err_payload)}\n\n"
 
         return Response(stream_with_context(generate()), mimetype='text/event-stream')
 
