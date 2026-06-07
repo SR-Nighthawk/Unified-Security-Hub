@@ -31,6 +31,11 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.getenv("SECRET_KEY", "super-secret-default-key-dev-only")
 
 db.init_app(app)
+
+# Initialize database tables on startup
+with app.app_context():
+    db.create_all()
+
 socketio.init_app(app)
 
 from backend.extensions import login_manager
