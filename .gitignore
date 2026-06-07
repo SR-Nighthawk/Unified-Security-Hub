@@ -13,6 +13,8 @@ venv/
 # ── Database ──
 database/*.db
 database/*.sqlite
+database/reports/
+database/data/
 
 # ── Runtime Data (never commit) ──
 data/intel_vault.json
@@ -22,6 +24,10 @@ static/proof_*.png
 static/screenshots/
 frontend/static/reports/
 frontend/static/screenshots/
+
+# ── Embedded payload repos (handle as submodules if needed) ──
+backend/modules/payloads/PayloadsAllTheThings/
+backend/modules/payloads/yezz123_gist/
 
 # ── IDE / OS ──
 .vscode/
