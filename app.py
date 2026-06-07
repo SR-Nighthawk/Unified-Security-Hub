@@ -21,12 +21,24 @@ from backend.modules.ransomware_module import ransomware_bp
 
 app = Flask(__name__, template_folder='frontend/templates', static_folder='frontend/static')
 
-# Database Setup — use absolute path relative to project root (not CWD)
-# This ensures the DB is found correctly in Docker, Gunicorn, and dev
-BASE_DIR = Path(__file__).resolve().parent
-db_path = BASE_DIR / 'database' / 'apt_intel.db'
-db_path.parent.mkdir(parents=True, exist_ok=True)
-app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
+# ── Database Setup ───────────────────────────────────────────
+# Priority 1: DATABASE_URL env var (Railway PostgreSQL, Render, etc.)
+# Priority 2: Local SQLite fallback for development
+DATABASE_URL = os.getenv("DATABASE_URL", "")
+if DATABASE_URL:
+    # Railway/Heroku may use "postgres://" prefix — SQLAlchemy requires "postgresql://"
+    if DATABASE_URL.startswith("postgres://"):
+        DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+    app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
+    print(f"[DB] Using PostgreSQL (DATABASE_URL configured)")
+else:
+    # Local development: SQLite relative to project root
+    BASE_DIR = Path(__file__).resolve().parent
+    db_path = BASE_DIR / 'database' / 'apt_intel.db'
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
+    print(f"[DB] Using SQLite at {db_path}")
+
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.getenv("SECRET_KEY", "super-secret-default-key-dev-only")
 
@@ -51,6 +63,12 @@ app.register_blueprint(ai_bp)
 app.register_blueprint(analytics_bp)
 app.register_blueprint(pentest_bp)
 app.register_blueprint(ransomware_bp)
+
+# ── Initialize Database Tables ───────────────────────────────
+# Creates all tables on first run (works for both SQLite and PostgreSQL)
+with app.app_context():
+    db.create_all()
+    print("[DB] Tables initialized successfully")
 
 # Background scheduler for DarkWeb
 start_scheduler(app)
