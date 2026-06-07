@@ -31,9 +31,21 @@ dark_web_bp = Blueprint('dark_web_bp', __name__)
 # --- CONFIG ---
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 if not GEMINI_API_KEY:
-    print("WARNING: GEMINI_API_KEY NOT FOUND IN .ENV")
+    print("WARNING: GEMINI_API_KEY NOT FOUND IN .ENV — AI features will be disabled.")
 
-client = genai.Client(api_key=GEMINI_API_KEY)
+# Lazy-initialise the Gemini client so a missing key doesn't crash startup.
+_gemini_client = None
+
+def get_gemini_client():
+    """Return a cached Gemini client, or None if no API key is configured."""
+    global _gemini_client
+    if _gemini_client is None:
+        key = os.getenv("GEMINI_API_KEY")
+        if not key:
+            return None
+        _gemini_client = genai.Client(api_key=key)
+    return _gemini_client
+
 NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY")
 TG_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TG_CHAT = os.getenv("TELEGRAM_CHAT_ID")
@@ -203,7 +215,11 @@ class IntelEngine:
                                   f"VICTIMS: [Who is targeted?]\n"
                                   f"SUMMARY: [Brief technical details]")
                         
-                        ai_resp = client.models.generate_content(model=model_id, contents=prompt)
+                        _gc = get_gemini_client()
+                        if not _gc:
+                            last_error = "GEMINI_API_KEY not configured"
+                            break
+                        ai_resp = _gc.models.generate_content(model=model_id, contents=prompt)
                         res_text = ai_resp.text
                         for line in res_text.split("\n"):
                             if line.startswith("RISK:"): risk_score = int(''.join(filter(str.isdigit, line)))
@@ -505,10 +521,14 @@ def get_apt_enrichment(group_name):
     
     # --- FALLBACK: Gemini ---
     print(f"[AI] NVIDIA exhausted, trying Gemini for '{group_name}'...")
+    _gc = get_gemini_client()
+    if not _gc:
+        print(f"[AI] Gemini skipped — GEMINI_API_KEY not configured.")
+        return None
     for model_id in ["gemini-2.0-flash", "gemini-1.5-flash"]:
         try:
             print(f"[AI] Trying Gemini model: {model_id} for '{group_name}'")
-            ai_resp = client.models.generate_content(model=model_id, contents=prompt)
+            ai_resp = _gc.models.generate_content(model=model_id, contents=prompt)
             text = ai_resp.text
             print(f"[AI] Gemini OK: {text[:80]}...")
             text = text.strip()
